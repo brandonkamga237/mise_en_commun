@@ -6,8 +6,8 @@ FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
-# Enable pnpm via corepack
-RUN corepack enable pnpm
+# Enable pnpm via corepack (version pinned in package.json#packageManager)
+RUN corepack enable && corepack prepare --activate
 
 # Copy dependency manifests first (layer cache)
 COPY package.json pnpm-lock.yaml ./
