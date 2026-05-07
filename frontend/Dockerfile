@@ -1,4 +1,4 @@
-# ===== ForTube Frontend — Production Dockerfile =====
+# ===== Mises en Commun — Frontend Production Dockerfile =====
 
 # Stage 1: Build React app
 ARG NODE_VERSION=22.14.0

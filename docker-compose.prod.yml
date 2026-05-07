@@ -1,39 +1,70 @@
 services:
-  backend:
-    image: brandoniscoding/mboa-studio-backend:latest
+  postgres:
+    image: postgres:16-alpine
     restart: unless-stopped
-    env_file: ./backend/.env
+    environment:
+      POSTGRES_USER: misescommun
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: misescommun
     volumes:
-      - backend_data:/app/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - mboa-internal
+      - internal
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD-SHELL", "pg_isready -U misescommun"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: brandoniscoding/mise-en-commun-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/sante"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   frontend:
-    image: brandoniscoding/mboa-studio-frontend:latest
+    image: brandoniscoding/mise-en-commun-frontend:latest
     restart: unless-stopped
     networks:
-      - mboa-internal
+      - internal
       - traefik-public
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mboa-studio.rule=Host(`mboastudio.brandonkamga.com`)"
-      - "traefik.http.routers.mboa-studio.entrypoints=websecure"
-      - "traefik.http.routers.mboa-studio.tls.certresolver=le"
-      - "traefik.http.services.mboa-studio.loadbalancer.server.port=80"
+      - "traefik.http.routers.mise-en-commun.rule=Host(`misencommun.brandonkamga.com`)"
+      - "traefik.http.routers.mise-en-commun.entrypoints=websecure"
+      - "traefik.http.routers.mise-en-commun.tls.certresolver=le"
+      - "traefik.http.services.mise-en-commun.loadbalancer.server.port=80"
       - "traefik.docker.network=traefik-public"
     depends_on:
       - backend
 
 volumes:
-  backend_data:
+  postgres_data:
 
 networks:
-  mboa-internal:
+  internal:
     driver: bridge
   traefik-public:
     external: true
