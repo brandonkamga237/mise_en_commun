@@ -150,5 +150,16 @@ export const getStatsParticipation = (params?: { mois?: number; annee?: number }
   api.get<PresenceStat[]>('/presence/stats/participation', { params }).then((r) => r.data);
 
 // ── PDF ──────────────────────────────────────────────────────
-export const getPdfUrl = (brouillonId: number) =>
-  `/api/brouillons/${brouillonId}/pdf`;
+export async function downloadPdf(brouillonId: number): Promise<void> {
+  const res = await api.get(`/brouillons/${brouillonId}/pdf`, { responseType: 'blob' });
+  const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// ── Profil ───────────────────────────────────────────────────
+export const updateProfil = (data: { nom?: string; mot_de_passe?: string }) =>
+  api.put<User>('/auth/profil', data).then((r) => r.data);

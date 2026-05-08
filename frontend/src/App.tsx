@@ -10,6 +10,7 @@ import BrouillonDetailPage from './pages/BrouillonDetailPage';
 import HistoriquePage from './pages/HistoriquePage';
 import PresencePage from './pages/PresencePage';
 import AdminPage from './pages/AdminPage';
+import ProfilPage from './pages/ProfilPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { token, user, loading } = useAuthStore();
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/admin" element={
             <RequireAdmin><AdminPage /></RequireAdmin>
           } />
+          <Route path="/profil" element={<ProfilPage />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/tableau-de-bord" replace />} />

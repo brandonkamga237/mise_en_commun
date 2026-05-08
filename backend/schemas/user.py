@@ -25,4 +25,8 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     nom: str | None = None
     role: RoleEnum | None = None
+
+
+class ProfileUpdate(BaseModel):
+    nom: str | None = None
     mot_de_passe: str | None = None

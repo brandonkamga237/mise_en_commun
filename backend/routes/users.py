@@ -78,8 +78,6 @@ def update_user(
         user.nom = body.nom
     if body.role is not None:
         user.role = body.role
-    if body.mot_de_passe is not None:
-        user.mot_de_passe_hash = hash_password(body.mot_de_passe)
     db.commit()
     db.refresh(user)
     return user

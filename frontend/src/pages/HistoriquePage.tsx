@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getHistorique } from '../api/client';
+import { getHistorique, downloadPdf } from '../api/client';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Spinner } from '../components/ui/Spinner';
 import type { BrouillonSummary } from '../types';
@@ -146,15 +146,12 @@ export default function HistoriquePage() {
                   <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/brouillons/${b.id}`)}>
                     Consulter
                   </button>
-                  <a
-                    href={`/api/brouillons/${b.id}/pdf`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
                     className="btn btn-secondary btn-sm"
-                    style={{ textDecoration: 'none' }}
+                    onClick={() => downloadPdf(b.id)}
                   >
                     PDF
-                  </a>
+                  </button>
                 </div>
               </div>
             ))}

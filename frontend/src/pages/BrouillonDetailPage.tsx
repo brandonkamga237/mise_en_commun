@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   getBrouillon, getCommentaires, updateBrouillon,
   soumettreCandidat, validerOfficiel, deleteBrouillon,
-  renvoyerRevision, getBrouillons, setVisibilite,
+  renvoyerRevision, getBrouillons, setVisibilite, downloadPdf,
 } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { StatusPill } from '../components/ui/StatusPill';
@@ -226,11 +226,13 @@ export default function BrouillonDetailPage() {
           display: 'flex', gap: 6, padding: '0 16px 10px',
           overflowX: 'auto', flexWrap: 'nowrap', scrollbarWidth: 'none',
         }}>
-          <a href={`/api/brouillons/${brouillon.id}/pdf`} target="_blank" rel="noreferrer"
-            className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', flexShrink: 0 }}
-            aria-label="Télécharger PDF">
+          <button
+            className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }}
+            aria-label="Télécharger PDF"
+            onClick={() => downloadPdf(brouillon.id)}
+          >
             <IcoPdf /> PDF
-          </a>
+          </button>
 
           {canEdit && !editMode && (
             <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={() => setEditMode(true)}>

@@ -6,7 +6,7 @@ from core.dependencies import get_current_user
 from core.security import create_access_token, hash_password, verify_password
 from models.user import RoleEnum, User
 from schemas.auth import LoginRequest, SetupRequest, TokenResponse
-from schemas.user import UserOut
+from schemas.user import ProfileUpdate, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,4 +46,19 @@ def setup(body: SetupRequest, db: Session = Depends(get_db)):
 
 @router.get("/moi", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.put("/profil", response_model=UserOut)
+def update_profile(
+    body: ProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if body.nom is not None:
+        current_user.nom = body.nom.strip()
+    if body.mot_de_passe is not None:
+        current_user.mot_de_passe_hash = hash_password(body.mot_de_passe)
+    db.commit()
+    db.refresh(current_user)
     return current_user

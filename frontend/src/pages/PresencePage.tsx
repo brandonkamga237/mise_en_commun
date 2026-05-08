@@ -148,29 +148,25 @@ export default function PresencePage() {
 
       {tab === 'saisie' && (
         <>
-          {/* Navigation date */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          {/* Navigation date — samedis uniquement */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => setDate(prevWeek(date))}
               style={{ padding: '6px 10px' }}
-              aria-label="Semaine précédente"
+              aria-label="Samedi précédent"
             >
-              ← Préc.
+              ←
             </button>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <input
-                type="date"
-                className="field"
-                style={{ width: 'auto', fontSize: 13, flex: 1 }}
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                aria-label="Date de la répétition"
-              />
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-primary)' }}>
+                {new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
               {isEnregistree && (
                 <span style={{
+                  display: 'inline-block', marginTop: 4,
                   fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                  background: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC', whiteSpace: 'nowrap',
+                  background: '#F0FDF4', color: '#15803D', border: '1px solid #86EFAC',
                 }}>
                   ✓ Enregistrée
                 </span>
@@ -181,9 +177,9 @@ export default function PresencePage() {
               onClick={() => setDate(nextWeek(date))}
               disabled={!canGoNext}
               style={{ padding: '6px 10px' }}
-              aria-label="Semaine suivante"
+              aria-label="Samedi suivant"
             >
-              Suiv. →
+              →
             </button>
           </div>
 
