@@ -107,9 +107,9 @@ export function BrouillonCard({ brouillon, onRefresh }: BrouillonCardProps) {
               PDF ↓
             </button>
           )}
-          {isAuteur && brouillon.statut === 'cree' && (
+          {isAuteur && (brouillon.statut === 'cree' || brouillon.statut === 'en_revision') && (
             <button className="btn btn-gold btn-sm" style={{ fontSize: 11 }} onClick={handleSoumettre}>
-              Soumettre
+              {brouillon.statut === 'en_revision' ? 'Resoumettre' : 'Soumettre'}
             </button>
           )}
           {isResp && (brouillon.statut === 'candidat_final' || brouillon.statut === 'cree') && (

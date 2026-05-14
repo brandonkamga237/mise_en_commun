@@ -221,6 +221,9 @@ export default function BrouillonDetailPage() {
           <StatusPill statut={brouillon.statut} />
         </div>
 
+        {/* Row 1b : Status stepper */}
+        <StatusStepper statut={brouillon.statut} />
+
         {/* Row 2 : actions scrollables */}
         <div style={{
           display: 'flex', gap: 6, padding: '0 16px 10px',
@@ -271,7 +274,7 @@ export default function BrouillonDetailPage() {
             </>
           )}
 
-          {isOwner && (brouillon.statut === 'cree' || brouillon.statut === 'en_revision') && (
+          {isOwner && ['cree', 'en_revision', 'candidat_final'].includes(brouillon.statut) && (
             <button
               className="btn btn-ghost btn-sm"
               style={{ color: '#DC2626', flexShrink: 0 }}
@@ -506,7 +509,11 @@ export default function BrouillonDetailPage() {
       {dialog?.type === 'supprimer' && (
         <ConfirmModal
           title="Supprimer ce brouillon"
-          message={<>Cette action est <strong>irréversible</strong>. Le brouillon et tous ses chants seront définitivement supprimés.</>}
+          message={
+            brouillon.statut === 'candidat_final'
+              ? <>Ce brouillon est <strong>en attente de validation</strong>. Le supprimer retirera ta soumission. Cette action est <strong>irréversible</strong>.</>
+              : <>Cette action est <strong>irréversible</strong>. Le brouillon et tous ses chants seront définitivement supprimés.</>
+          }
           confirmLabel="Supprimer définitivement"
           variant="danger"
           loading={acting}
@@ -584,4 +591,78 @@ function IcoEyeOff() {
 }
 function IcoAlertCircle() {
   return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+}
+
+type Statut = 'cree' | 'en_revision' | 'candidat_final' | 'officiel' | 'archive';
+
+function StatusStepper({ statut }: { statut: string }) {
+  const steps = [
+    { key: 'redaction', label: 'Rédaction' },
+    { key: 'soumis',    label: 'En attente' },
+    { key: 'valide',    label: 'Validé' },
+  ];
+
+  const stepIndex = (s: string): number => {
+    if (s === 'officiel' || s === 'archive') return 2;
+    if (s === 'candidat_final') return 1;
+    return 0;
+  };
+
+  const isRevision = statut === 'en_revision';
+  const current = stepIndex(statut as Statut);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      padding: '6px 16px 8px', gap: 0,
+    }}>
+      {steps.map((step, i) => {
+        const done = i < current;
+        const active = i === current;
+        const warn = active && isRevision;
+
+        const dotBg = done
+          ? '#16A34A'
+          : warn ? '#EF4444'
+          : active ? 'var(--brand-navy)'
+          : 'var(--border-medium)';
+
+        const labelColor = done
+          ? '#16A34A'
+          : warn ? '#EF4444'
+          : active ? 'var(--brand-navy)'
+          : 'var(--fg-muted)';
+
+        return (
+          <div key={step.key} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+              <div style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: dotBg,
+                border: active && !warn ? '2px solid var(--brand-navy)' : 'none',
+                boxShadow: active ? `0 0 0 3px ${warn ? 'rgba(239,68,68,0.15)' : 'rgba(43,76,126,0.15)'}` : 'none',
+                flexShrink: 0,
+                transition: 'background 0.2s',
+              }} />
+              <span style={{
+                fontSize: 10, fontWeight: active ? 700 : 500,
+                color: labelColor,
+                whiteSpace: 'nowrap',
+              }}>
+                {warn ? 'Révision' : step.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{
+                flex: 1, height: 2,
+                background: done ? '#16A34A' : 'var(--border-medium)',
+                margin: '-10px 4px 0',
+                transition: 'background 0.2s',
+              }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }

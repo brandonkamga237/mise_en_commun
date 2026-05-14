@@ -41,7 +41,7 @@ class Brouillon(Base):
     valide_par = Column(Integer, ForeignKey("users.id"), nullable=True)
     valide_le = Column(DateTime(timezone=True), nullable=True)
     motif_revision = Column(Text, nullable=True)
-    visible = Column(Boolean, default=True, nullable=False)
+    visible = Column(Boolean, default=False, nullable=False)
 
     auteur = relationship("User", foreign_keys=[auteur_id], back_populates="brouillons")
     validateur = relationship("User", foreign_keys=[valide_par])

@@ -33,7 +33,6 @@ export default function AppShell() {
     { to: '/tableau-de-bord', label: 'Accueil',    icon: <IcoHome /> },
     { to: '/mes-brouillons',  label: 'Brouillons', icon: <IcoFile /> },
     { to: '/brouillons',      label: 'Équipe',     icon: <IcoPeople /> },
-    { to: '/historique',      label: 'Historique', icon: <IcoClock /> },
   ];
 
   const isActive = (to: string) => path === to || (to !== '/brouillons' && path.startsWith(to + '/'));
@@ -104,6 +103,9 @@ export default function AppShell() {
               </div>
             </div>
             <div style={{ padding: '6px 0' }}>
+              <button className="sheet-item" onClick={() => navigate('/historique')}>
+                <IcoClock /> Historique
+              </button>
               {isResp && (
                 <button className="sheet-item" onClick={() => navigate('/presence')}>
                   <IcoShield /> Présence
