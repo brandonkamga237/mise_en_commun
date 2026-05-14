@@ -3,9 +3,8 @@ import { Avatar } from '../ui/Avatar';
 import { StatusPill } from '../ui/StatusPill';
 import { TimeAgo } from '../ui/TimeAgo';
 import type { BrouillonSummary } from '../../types';
-import { getPdfUrl } from '../../api/client';
+import { downloadPdf, validerOfficiel, soumettreCandidat } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
-import { validerOfficiel, soumettreCandidat } from '../../api/client';
 import toast from 'react-hot-toast';
 
 interface BrouillonCardProps {
@@ -100,15 +99,13 @@ export function BrouillonCard({ brouillon, onRefresh }: BrouillonCardProps) {
           onClick={e => e.stopPropagation()}
         >
           {brouillon.statut !== 'archive' && (
-            <a
-              href={getPdfUrl(brouillon.id)}
-              target="_blank"
-              rel="noreferrer"
+            <button
               className="btn btn-ghost btn-sm"
-              style={{ textDecoration: 'none', fontSize: 11, color: 'var(--fg-secondary)' }}
+              style={{ fontSize: 11, color: 'var(--fg-secondary)' }}
+              onClick={() => downloadPdf(brouillon.id)}
             >
               PDF ↓
-            </a>
+            </button>
           )}
           {isAuteur && brouillon.statut === 'cree' && (
             <button className="btn btn-gold btn-sm" style={{ fontSize: 11 }} onClick={handleSoumettre}>

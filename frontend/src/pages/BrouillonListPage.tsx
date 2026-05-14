@@ -39,6 +39,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
   const [creating, setCreating] = useState(false);
   const [selectedDate, setSelectedDate] = useState(nextSunday());
   const [fabOpen, setFabOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const fabRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -89,6 +90,23 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
   sortedDates.forEach(d => {
     grouped[d].sort((a, b) => STATUS_ORDER.indexOf(a.statut) - STATUS_ORDER.indexOf(b.statut));
   });
+
+  const today = localDateStr();
+  // Un groupe est "périmé" si le dimanche est passé et tous les brouillons sont non soumis (cree) ou archivés
+  const isStale = (date: string, items: BrouillonSummary[]) =>
+    date < today && items.length > 0 && items.every(b => b.statut === 'cree' || b.statut === 'archive');
+
+  const staleDatesCount = sortedDates.filter(date => {
+    const items = mineOnly ? grouped[date].filter(b => b.auteur.id === user?.id) : grouped[date];
+    return isStale(date, items);
+  }).length;
+
+  const visibleDates = showAll
+    ? sortedDates
+    : sortedDates.filter(date => {
+        const items = mineOnly ? grouped[date].filter(b => b.auteur.id === user?.id) : grouped[date];
+        return !isStale(date, items);
+      });
 
   // ── États spéciaux ──────────────────────────────
   if (loading) {
@@ -157,7 +175,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
         </button>
       </div>
 
-      {sortedDates.map(date => {
+      {visibleDates.map(date => {
         const items = mineOnly
           ? grouped[date].filter(b => b.auteur.id === user?.id)
           : grouped[date];
@@ -181,6 +199,19 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
           </div>
         );
       })}
+
+      {/* Toggle brouillons périmés */}
+      {staleDatesCount > 0 && (
+        <button
+          className="btn btn-ghost btn-sm"
+          style={{ width: '100%', fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}
+          onClick={() => setShowAll(s => !s)}
+        >
+          {showAll
+            ? '↑ Masquer les anciens brouillons non soumis'
+            : `↓ Afficher ${staleDatesCount} semaine${staleDatesCount > 1 ? 's' : ''} sans soumission`}
+        </button>
+      )}
 
       {/* FAB — mobile only */}
       <FabCreate

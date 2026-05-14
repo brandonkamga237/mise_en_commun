@@ -68,7 +68,7 @@ export const getUtilisateurs = () =>
 export const createUtilisateur = (data: { nom: string; email: string; mot_de_passe: string; role: string }) =>
   api.post<User>('/utilisateurs/', data).then((r) => r.data);
 
-export const updateUtilisateur = (id: number, data: { nom?: string; role?: string; mot_de_passe?: string }) =>
+export const updateUtilisateur = (id: number, data: { nom?: string; role?: string }) =>
   api.put<User>(`/utilisateurs/${id}`, data).then((r) => r.data);
 
 export const deleteUtilisateur = (id: number) =>
@@ -150,14 +150,17 @@ export const getStatsParticipation = (params?: { mois?: number; annee?: number }
   api.get<PresenceStat[]>('/presence/stats/participation', { params }).then((r) => r.data);
 
 // ── PDF ──────────────────────────────────────────────────────
-export async function downloadPdf(brouillonId: number): Promise<void> {
+export async function downloadPdf(brouillonId: number, filename?: string): Promise<void> {
   const res = await api.get(`/brouillons/${brouillonId}/pdf`, { responseType: 'blob' });
-  const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.target = '_blank';
+  a.download = filename ?? `culte-${brouillonId}.pdf`;
+  document.body.appendChild(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 // ── Profil ───────────────────────────────────────────────────

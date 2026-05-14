@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBrouillons, getHistorique, dupliquerBrouillon, createBrouillon } from '../api/client';
+import { getBrouillons, getHistorique, dupliquerBrouillon, createBrouillon, downloadPdf } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Spinner } from '../components/ui/Spinner';
@@ -201,10 +201,9 @@ export default function DashboardPage() {
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary btn-sm" onClick={() => navigate(`/brouillons/${officiel1.id}`)}>Consulter</button>
-                <a href={`/api/brouillons/${officiel1.id}/pdf`} target="_blank" rel="noreferrer"
-                  className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => downloadPdf(officiel1.id)}>
                   Télécharger PDF
-                </a>
+                </button>
               </div>
             </div>
           ) : (
@@ -311,11 +310,12 @@ export default function DashboardPage() {
                   {h.auteur.nom} · {h.nb_chants} chant{h.nb_chants !== 1 ? 's' : ''}
                 </div>
               </div>
-              <a href={`/api/brouillons/${h.id}/pdf`} target="_blank" rel="noreferrer"
-                className="btn btn-ghost btn-sm" style={{ textDecoration: 'none', fontSize: 11 }}
-                onClick={e => e.stopPropagation()}>
+              <button
+                className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}
+                onClick={e => { e.stopPropagation(); downloadPdf(h.id); }}
+              >
                 PDF ↓
-              </a>
+              </button>
             </div>
           ))}
         </div>
