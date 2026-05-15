@@ -34,11 +34,6 @@ function fmtLong(dateStr: string): string {
   });
 }
 
-function fmtShort(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'short',
-  });
-}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -123,8 +118,7 @@ export default function DashboardPage() {
 
   const monBrouillon1 = brouillons1.find(b => b.auteur.id === user?.id);
   const monBrouillon2 = brouillons2.find(b => b.auteur.id === user?.id);
-  const candidats1 = brouillons1.filter(b => b.statut === 'candidat_final');
-  const candidats2 = brouillons2.filter(b => b.statut === 'candidat_final');
+  const candidats1 = brouillons1.filter(b => b.statut === 'en_revision' && b.visible);
   const officiel1 = brouillons1.find(b => b.statut === 'officiel');
   const officiel2 = brouillons2.find(b => b.statut === 'officiel');
   const prenom = user?.nom.trim().split(/\s+/)[0] ?? '';
