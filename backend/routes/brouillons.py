@@ -71,13 +71,16 @@ def _can_edit(brouillon: Brouillon, user: User) -> bool:
 
 
 def _cleanup_expired(db: Session) -> None:
-    """Supprime tous les brouillons passés qui ne sont pas officiels."""
+    """Supprime tous les brouillons passés non officiels (avec cascade chants/commentaires)."""
     today = date.today()
-    db.query(Brouillon).filter(
+    expired = db.query(Brouillon).filter(
         Brouillon.date_dimanche < today,
         Brouillon.statut != StatutBrouillon.officiel,
-    ).delete(synchronize_session=False)
-    db.commit()
+    ).all()
+    for b in expired:
+        db.delete(b)
+    if expired:
+        db.commit()
 
 
 @router.get("/", response_model=list[BrouillonSummary])
