@@ -22,7 +22,7 @@ export function BrouillonCard({ brouillon, onRefresh }: BrouillonCardProps) {
     e.stopPropagation();
     try {
       await soumettreCandidat(brouillon.id);
-      toast.success('Brouillon soumis comme candidat final.');
+      toast.success('Brouillon soumis pour validation.');
       onRefresh?.();
     } catch {}
   };
@@ -98,23 +98,21 @@ export function BrouillonCard({ brouillon, onRefresh }: BrouillonCardProps) {
           style={{ display: 'flex', gap: 6, marginTop: 10, marginLeft: 44 }}
           onClick={e => e.stopPropagation()}
         >
-          {brouillon.statut !== 'archive' && (
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ fontSize: 11, color: 'var(--fg-secondary)' }}
-              onClick={() => downloadPdf(brouillon.id)}
-            >
-              PDF ↓
-            </button>
-          )}
-          {isAuteur && (brouillon.statut === 'cree' || brouillon.statut === 'en_revision') && (
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ fontSize: 11, color: 'var(--fg-secondary)' }}
+            onClick={() => downloadPdf(brouillon.id)}
+          >
+            PDF ↓
+          </button>
+          {isAuteur && brouillon.statut === 'en_revision' && !brouillon.visible && (
             <button className="btn btn-gold btn-sm" style={{ fontSize: 11 }} onClick={handleSoumettre}>
-              {brouillon.statut === 'en_revision' ? 'Resoumettre' : 'Soumettre'}
+              Soumettre
             </button>
           )}
-          {isResp && (brouillon.statut === 'candidat_final' || brouillon.statut === 'cree') && (
+          {isResp && brouillon.statut === 'en_revision' && brouillon.visible && (
             <button className="btn btn-primary btn-sm" style={{ fontSize: 11 }} onClick={handleValider}>
-              {brouillon.statut === 'candidat_final' ? 'Valider officiel' : 'Désigner officiel'}
+              Valider officiel
             </button>
           )}
         </div>

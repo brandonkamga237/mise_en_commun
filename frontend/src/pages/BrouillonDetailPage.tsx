@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   getBrouillon, getCommentaires, updateBrouillon,
   soumettreCandidat, validerOfficiel, deleteBrouillon,
-  renvoyerRevision, getBrouillons, setVisibilite, downloadPdf,
+  renvoyerRevision, revoquerOfficiel, getBrouillons, setVisibilite, downloadPdf,
 } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { StatusPill } from '../components/ui/StatusPill';
@@ -21,6 +21,7 @@ type TabId = 'chants' | 'liturgie' | 'lecon' | 'divers';
 type Dialog =
   | { type: 'soumettre' }
   | { type: 'valider'; autreOfficiel: BrouillonSummary | null; loading: boolean }
+  | { type: 'revoquer' }
   | { type: 'supprimer' }
   | null;
 
@@ -103,9 +104,9 @@ export default function BrouillonDetailPage() {
   }
 
   const isResp  = user.role === 'responsable' || user.role === 'admin';
+  const isAdmin = user.role === 'admin';
   const isOwner = brouillon.auteur.id === user.id;
-  const canEdit = brouillon.statut !== 'archive' &&
-    (brouillon.statut === 'officiel' ? isResp : isOwner || isResp);
+  const canEdit = brouillon.statut === 'officiel' ? isResp : (isOwner || isResp);
 
   // ── Handlers ──────────────────────────────────────
 
@@ -119,22 +120,12 @@ export default function BrouillonDetailPage() {
     } catch {} finally { setSaving(false); }
   };
 
-  const handleSoumettre = async () => {
-    setActing(true);
-    try {
-      await soumettreCandidat(brouillon.id);
-      toast.success('Brouillon soumis pour validation.');
-      setDialog(null);
-      load();
-    } catch {} finally { setActing(false); }
-  };
-
   const openValider = async () => {
     setDialog({ type: 'valider', autreOfficiel: null, loading: true });
     try {
       const semaine = await getBrouillons({ date_dimanche: brouillon.date_dimanche, statut: 'officiel' });
-      const autre = semaine.find(b => b.id !== brouillon.id) ?? null;
-      setDialog({ type: 'valider', autreOfficiel: autre, loading: false });
+      const existant = semaine.find(b => b.id !== brouillon.id) ?? null;
+      setDialog({ type: 'valider', autreOfficiel: existant, loading: false });
     } catch {
       setDialog({ type: 'valider', autreOfficiel: null, loading: false });
     }
@@ -145,6 +136,16 @@ export default function BrouillonDetailPage() {
     try {
       await validerOfficiel(brouillon.id);
       toast.success('Brouillon validé comme officiel.');
+      setDialog(null);
+      load();
+    } catch {} finally { setActing(false); }
+  };
+
+  const handleRevoquer = async () => {
+    setActing(true);
+    try {
+      await revoquerOfficiel(brouillon.id);
+      toast.success('Désignation officielle révoquée.');
       setDialog(null);
       load();
     } catch {} finally { setActing(false); }
@@ -168,7 +169,7 @@ export default function BrouillonDetailPage() {
     setEnvoiRenvoi(true);
     try {
       await renvoyerRevision(brouillon.id, motifRenvoi);
-      toast.success('Brouillon renvoyé en révision.');
+      toast.success('Retour envoyé à l\'auteur.');
       setShowRenvoi(false);
       setMotifRenvoi('');
       load();
@@ -251,30 +252,34 @@ export default function BrouillonDetailPage() {
             </>
           )}
 
-          {isOwner && brouillon.statut !== 'officiel' && brouillon.statut !== 'archive' && (
+          {isOwner && brouillon.statut === 'en_revision' && (
             <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={handleToggleVisibilite}>
-              {brouillon.visible ? <><IcoEyeOff /> Masquer</> : <><IcoEye /> Rendre visible</>}
+              {brouillon.visible ? <><IcoEyeOff /> Masquer</> : <><IcoEye /> Soumettre</>}
             </button>
           )}
 
-          {isOwner && (brouillon.statut === 'cree' || brouillon.statut === 'en_revision') && (
-            <button className="btn btn-gold btn-sm" style={{ flexShrink: 0 }} onClick={() => setDialog({ type: 'soumettre' })}>
-              <IcoSend /> Soumettre
-            </button>
-          )}
-
-          {isResp && (brouillon.statut === 'candidat_final' || brouillon.statut === 'cree') && (
+          {isResp && brouillon.statut === 'en_revision' && brouillon.visible && (
             <>
               <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={openValider}>
                 <IcoCheck /> Valider
               </button>
               <button className="btn btn-secondary btn-sm" style={{ color: '#DC2626', flexShrink: 0 }} onClick={() => setShowRenvoi(true)}>
-                Renvoyer
+                Retour
               </button>
             </>
           )}
 
-          {isOwner && ['cree', 'en_revision', 'candidat_final'].includes(brouillon.statut) && (
+          {isResp && brouillon.statut === 'officiel' && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ color: '#DC2626', flexShrink: 0 }}
+              onClick={() => setDialog({ type: 'revoquer' })}
+            >
+              <IcoUndo /> Révoquer
+            </button>
+          )}
+
+          {(isOwner && brouillon.statut === 'en_revision') || (isAdmin && brouillon.statut !== 'officiel') ? (
             <button
               className="btn btn-ghost btn-sm"
               style={{ color: '#DC2626', flexShrink: 0 }}
@@ -283,7 +288,7 @@ export default function BrouillonDetailPage() {
             >
               <IcoTrash />
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* Tab bar */}
@@ -466,18 +471,6 @@ export default function BrouillonDetailPage() {
       </div>
 
       {/* ── Dialogs ──────────────────────────────────── */}
-      {dialog?.type === 'soumettre' && (
-        <ConfirmModal
-          title="Soumettre pour validation"
-          message="Ce brouillon sera transmis au responsable pour relecture et validation."
-          confirmLabel="Soumettre"
-          variant="gold"
-          loading={acting}
-          onConfirm={handleSoumettre}
-          onCancel={() => setDialog(null)}
-        />
-      )}
-
       {dialog?.type === 'valider' && (
         <ConfirmModal
           title="Valider ce brouillon"
@@ -490,8 +483,8 @@ export default function BrouillonDetailPage() {
               <>
                 Ce brouillon sera désigné comme <strong>officiel</strong> pour ce dimanche.
                 <br /><br />
-                <span style={{ color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: 6, display: 'block', fontSize: 13 }}>
-                  ↩ Le brouillon de <strong>{dialog.autreOfficiel.auteur.nom}</strong> sera automatiquement archivé.
+                <span style={{ color: '#991B1B', background: '#FEE2E2', padding: '6px 10px', borderRadius: 6, display: 'block', fontSize: 13 }}>
+                  ⚠️ Le brouillon de <strong>{dialog.autreOfficiel.auteur.nom}</strong> (actuellement officiel) sera <strong>définitivement supprimé</strong>.
                 </span>
               </>
             ) : (
@@ -506,14 +499,22 @@ export default function BrouillonDetailPage() {
         />
       )}
 
+      {dialog?.type === 'revoquer' && (
+        <ConfirmModal
+          title="Révoquer la désignation officielle"
+          message={<>Ce brouillon ne sera <strong>plus officiel</strong> pour ce dimanche. Il repassera en attente de validation. Cette action est irréversible si le dimanche est passé.</>}
+          confirmLabel="Révoquer"
+          variant="danger"
+          loading={acting}
+          onConfirm={handleRevoquer}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
       {dialog?.type === 'supprimer' && (
         <ConfirmModal
           title="Supprimer ce brouillon"
-          message={
-            brouillon.statut === 'candidat_final'
-              ? <>Ce brouillon est <strong>en attente de validation</strong>. Le supprimer retirera ta soumission. Cette action est <strong>irréversible</strong>.</>
-              : <>Cette action est <strong>irréversible</strong>. Le brouillon et tous ses chants seront définitivement supprimés.</>
-          }
+          message={<>Cette action est <strong>irréversible</strong>. Le brouillon et tous ses chants seront définitivement supprimés.</>}
           confirmLabel="Supprimer définitivement"
           variant="danger"
           loading={acting}
@@ -527,10 +528,10 @@ export default function BrouillonDetailPage() {
           <div className="overlay" onClick={() => { if (!envoiRenvoi) setShowRenvoi(false); }} />
           <div className="modal" style={{ maxWidth: 460 }}>
             <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 6 }}>
-              Renvoyer en révision
+              Envoyer un retour
             </h3>
             <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16, lineHeight: 1.6 }}>
-              Ce brouillon sera renvoyé à <strong>{brouillon.auteur.nom}</strong> avec ton retour.
+              Ton message sera visible par <strong>{brouillon.auteur.nom}</strong>. Le brouillon reste en révision.
             </p>
             <textarea
               className="field" style={{ minHeight: 90, fontSize: 14 }}
@@ -542,7 +543,7 @@ export default function BrouillonDetailPage() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
               <button className="btn btn-secondary" onClick={() => setShowRenvoi(false)} disabled={envoiRenvoi}>Annuler</button>
               <button className="btn btn-danger" onClick={handleRenvoyer} disabled={envoiRenvoi || !motifRenvoi.trim()}>
-                {envoiRenvoi ? <Spinner size={14} /> : 'Renvoyer en révision'}
+                {envoiRenvoi ? <Spinner size={14} /> : 'Envoyer le retour'}
               </button>
             </div>
           </div>
@@ -592,77 +593,40 @@ function IcoEyeOff() {
 function IcoAlertCircle() {
   return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
 }
-
-type Statut = 'cree' | 'en_revision' | 'candidat_final' | 'officiel' | 'archive';
+function IcoUndo() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>;
+}
 
 function StatusStepper({ statut }: { statut: string }) {
-  const steps = [
-    { key: 'redaction', label: 'Rédaction' },
-    { key: 'soumis',    label: 'En attente' },
-    { key: 'valide',    label: 'Validé' },
-  ];
-
-  const stepIndex = (s: string): number => {
-    if (s === 'officiel' || s === 'archive') return 2;
-    if (s === 'candidat_final') return 1;
-    return 0;
-  };
-
-  const isRevision = statut === 'en_revision';
-  const current = stepIndex(statut as Statut);
+  const isOfficiel = statut === 'officiel';
+  const hasMotif = false; // motif_revision est géré via la bannière, pas le stepper
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center',
-      padding: '6px 16px 8px', gap: 0,
-    }}>
-      {steps.map((step, i) => {
-        const done = i < current;
-        const active = i === current;
-        const warn = active && isRevision;
-
-        const dotBg = done
-          ? '#16A34A'
-          : warn ? '#EF4444'
-          : active ? 'var(--brand-navy)'
-          : 'var(--border-medium)';
-
-        const labelColor = done
-          ? '#16A34A'
-          : warn ? '#EF4444'
-          : active ? 'var(--brand-navy)'
-          : 'var(--fg-muted)';
-
-        return (
-          <div key={step.key} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-              <div style={{
-                width: 10, height: 10, borderRadius: '50%',
-                background: dotBg,
-                border: active && !warn ? '2px solid var(--brand-navy)' : 'none',
-                boxShadow: active ? `0 0 0 3px ${warn ? 'rgba(239,68,68,0.15)' : 'rgba(43,76,126,0.15)'}` : 'none',
-                flexShrink: 0,
-                transition: 'background 0.2s',
-              }} />
-              <span style={{
-                fontSize: 10, fontWeight: active ? 700 : 500,
-                color: labelColor,
-                whiteSpace: 'nowrap',
-              }}>
-                {warn ? 'Révision' : step.label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div style={{
-                flex: 1, height: 2,
-                background: done ? '#16A34A' : 'var(--border-medium)',
-                margin: '-10px 4px 0',
-                transition: 'background 0.2s',
-              }} />
-            )}
-          </div>
-        );
-      })}
+    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px 8px', gap: 0 }}>
+      {/* Étape 1 : En révision */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+        <div style={{
+          width: 10, height: 10, borderRadius: '50%',
+          background: isOfficiel ? '#16A34A' : 'var(--brand-navy)',
+          boxShadow: !isOfficiel ? '0 0 0 3px rgba(43,76,126,0.15)' : 'none',
+        }} />
+        <span style={{ fontSize: 10, fontWeight: !isOfficiel ? 700 : 400, color: !isOfficiel ? 'var(--brand-navy)' : 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+          En révision
+        </span>
+      </div>
+      {/* Ligne */}
+      <div style={{ flex: 1, height: 2, background: isOfficiel ? '#16A34A' : 'var(--border-medium)', margin: '-10px 6px 0' }} />
+      {/* Étape 2 : Validé */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+        <div style={{
+          width: 10, height: 10, borderRadius: '50%',
+          background: isOfficiel ? '#16A34A' : 'var(--border-medium)',
+          boxShadow: isOfficiel ? '0 0 0 3px rgba(22,163,74,0.15)' : 'none',
+        }} />
+        <span style={{ fontSize: 10, fontWeight: isOfficiel ? 700 : 400, color: isOfficiel ? '#16A34A' : 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+          Validé
+        </span>
+      </div>
     </div>
   );
 }

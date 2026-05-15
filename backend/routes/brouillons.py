@@ -65,19 +65,17 @@ def _is_responsable(user: User) -> bool:
 
 
 def _can_edit(brouillon: Brouillon, user: User) -> bool:
-    if brouillon.statut == StatutBrouillon.archive:
-        return False
     if brouillon.statut == StatutBrouillon.officiel:
         return _is_responsable(user)
     return brouillon.auteur_id == user.id or _is_responsable(user)
 
 
 def _cleanup_expired(db: Session) -> None:
-    """Supprime les brouillons passés non validés (cree, en_revision, candidat_final)."""
+    """Supprime tous les brouillons passés qui ne sont pas officiels."""
     today = date.today()
     db.query(Brouillon).filter(
         Brouillon.date_dimanche < today,
-        Brouillon.statut.notin_([StatutBrouillon.officiel, StatutBrouillon.archive]),
+        Brouillon.statut != StatutBrouillon.officiel,
     ).delete(synchronize_session=False)
     db.commit()
 
@@ -151,8 +149,8 @@ def set_visibilite(
         raise HTTPException(status_code=404, detail="Brouillon introuvable")
     if b.auteur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Seul l'auteur peut modifier la visibilité")
-    if b.statut in (StatutBrouillon.officiel, StatutBrouillon.archive):
-        raise HTTPException(status_code=400, detail="Un brouillon officiel ou archivé est toujours visible")
+    if b.statut == StatutBrouillon.officiel:
+        raise HTTPException(status_code=400, detail="Un brouillon officiel est toujours visible")
     b.visible = body.visible
     b.modifie_le = datetime.now(timezone.utc)
     db.commit()
@@ -195,14 +193,11 @@ def delete_brouillon(
     b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.auteur_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Seul l'auteur peut supprimer ce brouillon")
-    _DELETABLE = (StatutBrouillon.cree, StatutBrouillon.en_revision, StatutBrouillon.candidat_final)
-    if b.statut not in _DELETABLE:
-        raise HTTPException(
-            status_code=400,
-            detail="Un brouillon officiel ou archivé ne peut pas être supprimé",
-        )
+    is_admin = current_user.role == RoleEnum.admin
+    if not is_admin and b.auteur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Seul l'auteur ou un administrateur peut supprimer ce brouillon")
+    if not is_admin and b.statut == StatutBrouillon.officiel:
+        raise HTTPException(status_code=400, detail="Un brouillon officiel ne peut pas être supprimé")
     db.delete(b)
     db.commit()
 
@@ -213,17 +208,15 @@ def soumettre(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Soumet le brouillon comme candidat final (auteur uniquement)."""
+    """Rend le brouillon visible au responsable (auteur uniquement). Le statut reste en_revision."""
     b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Brouillon introuvable")
     if b.auteur_id != current_user.id:
         raise HTTPException(status_code=403, detail="Seul l'auteur peut soumettre ce brouillon")
-    if b.statut not in (StatutBrouillon.cree, StatutBrouillon.en_revision):
+    if b.statut != StatutBrouillon.en_revision:
         raise HTTPException(status_code=400, detail="Ce brouillon ne peut pas être soumis dans son état actuel")
-    b.statut = StatutBrouillon.candidat_final
     b.visible = True
-    b.motif_revision = None
     b.modifie_le = datetime.now(timezone.utc)
     db.commit()
     db.refresh(b)
@@ -242,17 +235,44 @@ def valider(
     b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.statut == StatutBrouillon.archive:
-        raise HTTPException(status_code=400, detail="Impossible de valider un brouillon archivé")
-    # Archive tout autre brouillon officiel pour ce dimanche
-    db.query(Brouillon).filter(
+    if b.statut == StatutBrouillon.officiel:
+        raise HTTPException(status_code=400, detail="Ce brouillon est déjà officiel")
+    if b.statut != StatutBrouillon.en_revision:
+        raise HTTPException(status_code=400, detail="Seul un brouillon en révision peut être validé")
+    # Supprime tout autre officiel pour ce dimanche (un seul autorisé)
+    existing = db.query(Brouillon).filter(
         Brouillon.date_dimanche == b.date_dimanche,
         Brouillon.statut == StatutBrouillon.officiel,
-        Brouillon.id != b.id,
-    ).update({"statut": StatutBrouillon.archive})
+    ).all()
+    for old in existing:
+        db.delete(old)
     b.statut = StatutBrouillon.officiel
+    b.visible = True
     b.valide_par = current_user.id
     b.valide_le = datetime.now(timezone.utc)
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)
+
+
+@router.post("/{brouillon_id}/revoquer", response_model=BrouillonOut)
+def revoquer(
+    brouillon_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Révoque la désignation officielle — remet en_revision (responsable uniquement)."""
+    if not _is_responsable(current_user):
+        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
+    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Brouillon introuvable")
+    if b.statut != StatutBrouillon.officiel:
+        raise HTTPException(status_code=400, detail="Seul un brouillon officiel peut être révoqué")
+    b.statut = StatutBrouillon.en_revision
+    b.valide_par = None
+    b.valide_le = None
     b.modifie_le = datetime.now(timezone.utc)
     db.commit()
     db.refresh(b)
@@ -266,18 +286,14 @@ def renvoyer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Renvoie un brouillon en révision à l'auteur (responsable uniquement)."""
+    """Ajoute un motif de retour sur un brouillon en révision (responsable uniquement)."""
     if not _is_responsable(current_user):
         raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
     b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
     if not b:
         raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.statut not in (StatutBrouillon.candidat_final, StatutBrouillon.cree):
-        raise HTTPException(
-            status_code=400,
-            detail="Seul un brouillon soumis peut être renvoyé en révision",
-        )
-    b.statut = StatutBrouillon.en_revision
+    if b.statut != StatutBrouillon.en_revision:
+        raise HTTPException(status_code=400, detail="Ce brouillon n'est pas en révision")
     b.motif_revision = body.motif.strip() or None
     b.modifie_le = datetime.now(timezone.utc)
     db.commit()

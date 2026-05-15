@@ -24,7 +24,7 @@ function fmtDate(dateStr: string): string {
   });
 }
 
-const STATUS_ORDER = ['officiel', 'candidat_final', 'en_revision', 'cree', 'archive'];
+const STATUS_ORDER = ['officiel', 'en_revision'];
 
 interface BrouillonListPageProps {
   mineOnly?: boolean;
@@ -94,7 +94,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
   const today = localDateStr();
   // Un groupe est "périmé" si le dimanche est passé et tous les brouillons sont non soumis (cree) ou archivés
   const isStale = (date: string, items: BrouillonSummary[]) =>
-    date < today && items.length > 0 && items.every(b => b.statut === 'cree' || b.statut === 'archive');
+    date < today && items.length > 0 && items.every(b => b.statut === 'en_revision');
 
   const staleDatesCount = sortedDates.filter(date => {
     const items = mineOnly ? grouped[date].filter(b => b.auteur.id === user?.id) : grouped[date];

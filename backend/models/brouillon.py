@@ -36,7 +36,7 @@ class Brouillon(Base):
     lecon = Column(Text, default="", nullable=False)
     divers = Column(Text, default="", nullable=False)
     statut = Column(
-        Enum(StatutBrouillon), default=StatutBrouillon.cree, nullable=False
+        Enum(StatutBrouillon), default=StatutBrouillon.en_revision, nullable=False
     )
     valide_par = Column(Integer, ForeignKey("users.id"), nullable=True)
     valide_le = Column(DateTime(timezone=True), nullable=True)

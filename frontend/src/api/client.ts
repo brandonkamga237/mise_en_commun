@@ -99,6 +99,9 @@ export const validerOfficiel = (id: number) =>
 export const renvoyerRevision = (id: number, motif: string) =>
   api.post<Brouillon>(`/brouillons/${id}/renvoyer`, { motif }).then((r) => r.data);
 
+export const revoquerOfficiel = (id: number) =>
+  api.post<Brouillon>(`/brouillons/${id}/revoquer`).then((r) => r.data);
+
 export const dupliquerBrouillon = (source_id: number, date_dimanche: string) =>
   api.post<Brouillon>('/brouillons/dupliquer', { source_id, date_dimanche }).then((r) => r.data);
 
