@@ -82,10 +82,10 @@ export default function BrouillonDetailPage() {
       <div className="empty-state" style={{ height: '50dvh' }}>
         <div className="empty-state-icon"><IcoAlertCircle /></div>
         <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg-primary)', marginBottom: 4 }}>
-          Impossible de charger ce brouillon
+          Impossible de charger cette préparation
         </div>
         <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16 }}>
-          Il a peut-être été supprimé ou tu n'as pas accès.
+          Elle a peut-être été supprimée ou tu n'as pas accès.
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(-1)}>Retour</button>
@@ -135,7 +135,7 @@ export default function BrouillonDetailPage() {
     setActing(true);
     try {
       await validerOfficiel(brouillon.id);
-      toast.success('Brouillon validé comme officiel.');
+      toast.success('Préparation validée comme officielle.');
       setDialog(null);
       load();
     } catch {} finally { setActing(false); }
@@ -155,7 +155,7 @@ export default function BrouillonDetailPage() {
     setActing(true);
     try {
       await deleteBrouillon(brouillon.id);
-      toast.success('Brouillon supprimé.');
+      toast.success('Préparation supprimée.');
       setDialog(null);
       navigate(-1);
     } catch {} finally { setActing(false); }
@@ -179,7 +179,7 @@ export default function BrouillonDetailPage() {
   const handleToggleVisibilite = async () => {
     try {
       await setVisibilite(brouillon.id, !brouillon.visible);
-      toast.success(brouillon.visible ? 'Brouillon masqué.' : 'Brouillon rendu visible.');
+      toast.success(brouillon.visible ? 'Préparation masquée.' : 'Préparation rendue visible.');
       load();
     } catch {}
   };
@@ -225,7 +225,7 @@ export default function BrouillonDetailPage() {
               className="btn btn-ghost btn-sm"
               style={{ color: '#DC2626', flexShrink: 0, padding: '4px 6px' }}
               onClick={() => setDialog({ type: 'supprimer' })}
-              aria-label="Supprimer ce brouillon"
+              aria-label="Supprimer cette préparation"
             >
               <IcoTrash />
             </button>
@@ -328,7 +328,7 @@ export default function BrouillonDetailPage() {
           }}>
             <IcoEyeOff />
             <span style={{ fontSize: 13, color: '#6B7280' }}>
-              Ce brouillon est <strong>privé</strong> — seul toi peux le voir.
+              Cette préparation est <strong>privée</strong> — seul toi peux la voir.
             </span>
           </div>
         )}
@@ -473,7 +473,7 @@ export default function BrouillonDetailPage() {
       {/* ── Dialogs ──────────────────────────────────── */}
       {dialog?.type === 'valider' && (
         <ConfirmModal
-          title="Valider ce brouillon"
+          title="Valider cette préparation"
           message={
             dialog.loading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -481,14 +481,14 @@ export default function BrouillonDetailPage() {
               </div>
             ) : dialog.autreOfficiel ? (
               <>
-                Ce brouillon sera désigné comme <strong>officiel</strong> pour ce dimanche.
+                Cette préparation sera désignée comme <strong>officielle</strong> pour ce dimanche.
                 <br /><br />
                 <span style={{ color: '#991B1B', background: '#FEE2E2', padding: '6px 10px', borderRadius: 6, display: 'block', fontSize: 13 }}>
-                  ⚠️ Le brouillon de <strong>{dialog.autreOfficiel.auteur.nom}</strong> (actuellement officiel) sera <strong>définitivement supprimé</strong>.
+                  ⚠️ La préparation de <strong>{dialog.autreOfficiel.auteur.nom}</strong> (actuellement officielle) sera <strong>définitivement supprimée</strong>.
                 </span>
               </>
             ) : (
-              <>Ce brouillon sera désigné comme <strong>officiel</strong> pour ce dimanche.</>
+              <>Cette préparation sera désignée comme <strong>officielle</strong> pour ce dimanche.</>
             )
           }
           confirmLabel="Valider"
@@ -502,7 +502,7 @@ export default function BrouillonDetailPage() {
       {dialog?.type === 'revoquer' && (
         <ConfirmModal
           title="Révoquer la désignation officielle"
-          message={<>Ce brouillon ne sera <strong>plus officiel</strong> pour ce dimanche. Il repassera en attente de validation. Cette action est irréversible si le dimanche est passé.</>}
+          message={<>Cette préparation ne sera <strong>plus officielle</strong> pour ce dimanche. Elle repassera en attente de validation. Cette action est irréversible si le dimanche est passé.</>}
           confirmLabel="Révoquer"
           variant="danger"
           loading={acting}
@@ -513,8 +513,8 @@ export default function BrouillonDetailPage() {
 
       {dialog?.type === 'supprimer' && (
         <ConfirmModal
-          title="Supprimer ce brouillon"
-          message={<>Cette action est <strong>irréversible</strong>. Le brouillon et tous ses chants seront définitivement supprimés.</>}
+          title="Supprimer cette préparation"
+          message={<>Cette action est <strong>irréversible</strong>. La préparation et tous ses chants seront définitivement supprimés.</>}
           confirmLabel="Supprimer définitivement"
           variant="danger"
           loading={acting}
@@ -531,7 +531,7 @@ export default function BrouillonDetailPage() {
               Envoyer un retour
             </h3>
             <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16, lineHeight: 1.6 }}>
-              Ton message sera visible par <strong>{brouillon.auteur.nom}</strong>. Le brouillon reste en révision.
+              Ton message sera visible par <strong>{brouillon.auteur.nom}</strong>. La préparation reste en révision.
             </p>
             <textarea
               className="field" style={{ minHeight: 90, fontSize: 14 }}

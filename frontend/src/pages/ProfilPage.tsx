@@ -1,24 +1,28 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateProfil } from '../api/client';
+import { updateProfil, uploadPhoto } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { Spinner } from '../components/ui/Spinner';
-import { Avatar } from '../components/ui/Avatar';
 import toast from 'react-hot-toast';
+
+const ROLE_LABELS: Record<string, string> = {
+  moniteur: 'Moniteur',
+  responsable: 'Responsable',
+  admin: 'Administrateur',
+};
 
 export default function ProfilPage() {
   const navigate = useNavigate();
   const { user, loadMe } = useAuthStore();
   const [nom, setNom] = useState(user?.nom ?? '');
+  const [prenom, setPrenom] = useState(user?.prenom ?? '');
+  const [adresse, setAdresse] = useState(user?.adresse ?? '');
+  const [telephone, setTelephone] = useState(user?.telephone ?? '');
   const [mdp, setMdp] = useState('');
   const [mdpConfirm, setMdpConfirm] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const ROLE_LABELS: Record<string, string> = {
-    moniteur: 'Moniteur',
-    responsable: 'Responsable',
-    admin: 'Administrateur',
-  };
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +36,11 @@ export default function ProfilPage() {
     }
     setSaving(true);
     try {
-      const data: { nom?: string; mot_de_passe?: string } = {};
+      const data: Parameters<typeof updateProfil>[0] = {};
       if (nom.trim() && nom.trim() !== user?.nom) data.nom = nom.trim();
+      if (prenom.trim() !== (user?.prenom ?? '')) data.prenom = prenom.trim();
+      if (adresse.trim() !== (user?.adresse ?? '')) data.adresse = adresse.trim();
+      if (telephone.trim() !== (user?.telephone ?? '')) data.telephone = telephone.trim();
       if (mdp) data.mot_de_passe = mdp;
       if (Object.keys(data).length === 0) {
         toast('Aucune modification détectée.');
@@ -49,6 +56,25 @@ export default function ProfilPage() {
     }
   };
 
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      await uploadPhoto(file);
+      await loadMe();
+      toast.success('Photo mise à jour.');
+    } catch {} finally {
+      setUploadingPhoto(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const initials = [user?.prenom, user?.nom]
+    .filter(Boolean)
+    .map(s => s![0].toUpperCase())
+    .join('') || (user?.nom?.[0]?.toUpperCase() ?? '?');
+
   return (
     <div className="page-wrapper">
       <div style={{ marginBottom: 24 }}>
@@ -56,17 +82,71 @@ export default function ProfilPage() {
           Mon profil
         </h1>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 4 }}>
-          Modifie ton nom ou ton mot de passe.
+          Gérez vos informations personnelles et vos accès.
         </p>
       </div>
 
-      {/* Carte identité */}
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 20px' }}>
-        {user && <Avatar nom={user.nom} size={48} />}
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg-primary)' }}>{user?.nom}</div>
-          <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 2 }}>{user?.email}</div>
-          <div style={{ fontSize: 11, color: 'var(--fg-secondary)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      {/* Carte identité + photo */}
+      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: '16px 20px', flexWrap: 'wrap' }}>
+        {/* Avatar cliquable */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div
+            style={{
+              width: 64, height: 64, borderRadius: '50%',
+              overflow: 'hidden',
+              background: user?.photo_url ? 'transparent' : 'var(--brand-navy)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+              border: '2px solid var(--border-medium)',
+            }}
+            onClick={() => fileRef.current?.click()}
+            title="Changer la photo"
+          >
+            {user?.photo_url ? (
+              <img src={user.photo_url} alt="Photo de profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ color: 'white', fontWeight: 700, fontSize: 22 }}>{initials}</span>
+            )}
+            {uploadingPhoto && (
+              <div style={{
+                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%',
+              }}>
+                <Spinner size={18} />
+              </div>
+            )}
+          </div>
+          <div
+            style={{
+              position: 'absolute', bottom: 0, right: 0,
+              width: 20, height: 20, borderRadius: '50%',
+              background: 'var(--brand-gold)', border: '2px solid var(--bg-card)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+            onClick={() => fileRef.current?.click()}
+          >
+            <IcoPen />
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={handlePhotoChange}
+          />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg-primary)' }}>
+            {user?.prenom ? `${user.prenom} ${user.nom}` : user?.nom}
+          </div>
+          {user?.matricule && (
+            <div style={{ fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.06em', color: 'var(--fg-muted)', marginTop: 2 }}>
+              {user.matricule}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--fg-secondary)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {ROLE_LABELS[user?.role ?? ''] ?? user?.role}
           </div>
         </div>
@@ -74,18 +154,61 @@ export default function ProfilPage() {
 
       <div className="card">
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Nom d'affichage
-            </label>
-            <input
-              className="field"
-              type="text"
-              value={nom}
-              onChange={e => setNom(e.target.value)}
-              required
-              placeholder="Prénom Nom"
-            />
+          {/* Informations de base */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Nom *
+              </label>
+              <input
+                className="field"
+                type="text"
+                value={nom}
+                onChange={e => setNom(e.target.value)}
+                required
+                placeholder="Nom de famille"
+              />
+            </div>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Prénom
+              </label>
+              <input
+                className="field"
+                type="text"
+                value={prenom}
+                onChange={e => setPrenom(e.target.value)}
+                placeholder="Prénom (optionnel)"
+              />
+            </div>
+          </div>
+
+          {/* Informations de contact */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Téléphone
+              </label>
+              <input
+                className="field"
+                type="tel"
+                value={telephone}
+                onChange={e => setTelephone(e.target.value)}
+                placeholder="+237 6XX XXX XXX"
+              />
+            </div>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Adresse
+              </label>
+              <input
+                className="field"
+                type="text"
+                value={adresse}
+                onChange={e => setAdresse(e.target.value)}
+                placeholder="Quartier, ville…"
+              />
+            </div>
           </div>
 
           <div style={{ height: 1, background: 'var(--border-subtle)' }} />
@@ -94,33 +217,34 @@ export default function ProfilPage() {
             Laisse les champs ci-dessous vides pour ne pas changer ton mot de passe.
           </p>
 
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Nouveau mot de passe
-            </label>
-            <input
-              className="field"
-              type="password"
-              value={mdp}
-              onChange={e => setMdp(e.target.value)}
-              placeholder="6 caractères minimum"
-              autoComplete="new-password"
-              minLength={6}
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Confirmer le mot de passe
-            </label>
-            <input
-              className="field"
-              type="password"
-              value={mdpConfirm}
-              onChange={e => setMdpConfirm(e.target.value)}
-              placeholder="Répète le nouveau mot de passe"
-              autoComplete="new-password"
-            />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Nouveau mot de passe
+              </label>
+              <input
+                className="field"
+                type="password"
+                value={mdp}
+                onChange={e => setMdp(e.target.value)}
+                placeholder="6 caractères minimum"
+                autoComplete="new-password"
+                minLength={6}
+              />
+            </div>
+            <div style={{ flex: '1 1 180px' }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Confirmer
+              </label>
+              <input
+                className="field"
+                type="password"
+                value={mdpConfirm}
+                onChange={e => setMdpConfirm(e.target.value)}
+                placeholder="Répète le mot de passe"
+                autoComplete="new-password"
+              />
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
@@ -133,6 +257,33 @@ export default function ProfilPage() {
           </div>
         </form>
       </div>
+
+      {/* Matricule (lecture seule) */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+          Matricule (identifiant de connexion)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--brand-navy)' }}>
+            {user?.matricule ?? '—'}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>
+            Transmis uniquement à l'admin en cas d'oubli.
+          </span>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 8 }}>
+          En cas d'oubli, contactez votre administrateur au <strong>+237 620 51 95 64</strong>.
+        </p>
+      </div>
     </div>
+  );
+}
+
+function IcoPen() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
   );
 }

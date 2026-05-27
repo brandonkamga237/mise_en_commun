@@ -5,28 +5,28 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.dependencies import get_current_user
-from models.brouillon import Brouillon, StatutBrouillon
+from models.brouillon import Preparation, StatutPreparation
 from models.chant import Chant
 from models.commentaire import Commentaire
 from models.user import RoleEnum, User
 from schemas.brouillon import (
-    BrouillonCreate,
-    BrouillonDuplicate,
-    BrouillonOut,
-    BrouillonSummary,
-    BrouillonUpdate,
+    PreparationCreate,
+    PreparationDuplicate,
+    PreparationOut,
+    PreparationSummary,
+    PreparationUpdate,
     RenvoyerBody,
     VisibiliteBody,
 )
 
-router = APIRouter(prefix="/brouillons", tags=["brouillons"])
+router = APIRouter(prefix="/preparations", tags=["préparations"])
 
 
-def _build_summary(b: Brouillon) -> BrouillonSummary:
+def _build_summary(b: Preparation) -> PreparationSummary:
     nb_chants = len(b.chants)
     nb_comm = len([c for c in b.commentaires if c.parent_id is None])
     apercu = (b.lecon or "")[:80]
-    return BrouillonSummary(
+    return PreparationSummary(
         id=b.id,
         date_dimanche=b.date_dimanche,
         auteur=b.auteur,
@@ -39,9 +39,9 @@ def _build_summary(b: Brouillon) -> BrouillonSummary:
     )
 
 
-def _build_out(b: Brouillon) -> BrouillonOut:
+def _build_out(b: Preparation) -> PreparationOut:
     nb_comm = len([c for c in b.commentaires if c.parent_id is None])
-    return BrouillonOut(
+    return PreparationOut(
         id=b.id,
         date_dimanche=b.date_dimanche,
         auteur=b.auteur,
@@ -64,18 +64,18 @@ def _is_responsable(user: User) -> bool:
     return user.role in (RoleEnum.responsable, RoleEnum.admin)
 
 
-def _can_edit(brouillon: Brouillon, user: User) -> bool:
-    if brouillon.statut == StatutBrouillon.officiel:
+def _can_edit(preparation: Preparation, user: User) -> bool:
+    if preparation.statut == StatutPreparation.officiel:
         return _is_responsable(user)
-    return brouillon.auteur_id == user.id or _is_responsable(user)
+    return preparation.auteur_id == user.id or _is_responsable(user)
 
 
 def _cleanup_expired(db: Session) -> None:
-    """Supprime tous les brouillons passés non officiels (avec cascade chants/commentaires)."""
+    """Supprime toutes les préparations passées non officielles (avec cascade)."""
     today = date.today()
-    expired = db.query(Brouillon).filter(
-        Brouillon.date_dimanche < today,
-        Brouillon.statut != StatutBrouillon.officiel,
+    expired = db.query(Preparation).filter(
+        Preparation.date_dimanche < today,
+        Preparation.statut != StatutPreparation.officiel,
     ).all()
     for b in expired:
         db.delete(b)
@@ -83,36 +83,36 @@ def _cleanup_expired(db: Session) -> None:
         db.commit()
 
 
-@router.get("/", response_model=list[BrouillonSummary])
-def list_brouillons(
+@router.get("/", response_model=list[PreparationSummary])
+def list_preparations(
     date_dimanche: date | None = Query(None),
-    statut: StatutBrouillon | None = Query(None),
+    statut: StatutPreparation | None = Query(None),
     auteur_id: int | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     from sqlalchemy import or_
     _cleanup_expired(db)
-    q = db.query(Brouillon).filter(
-        or_(Brouillon.visible == True, Brouillon.auteur_id == current_user.id)
+    q = db.query(Preparation).filter(
+        or_(Preparation.visible == True, Preparation.auteur_id == current_user.id)
     )
     if date_dimanche:
-        q = q.filter(Brouillon.date_dimanche == date_dimanche)
+        q = q.filter(Preparation.date_dimanche == date_dimanche)
     if statut:
-        q = q.filter(Brouillon.statut == statut)
+        q = q.filter(Preparation.statut == statut)
     if auteur_id:
-        q = q.filter(Brouillon.auteur_id == auteur_id)
-    brouillons = q.order_by(Brouillon.date_dimanche.desc(), Brouillon.cree_le.desc()).all()
-    return [_build_summary(b) for b in brouillons]
+        q = q.filter(Preparation.auteur_id == auteur_id)
+    preparations = q.order_by(Preparation.date_dimanche.desc(), Preparation.cree_le.desc()).all()
+    return [_build_summary(b) for b in preparations]
 
 
-@router.post("/", response_model=BrouillonOut, status_code=status.HTTP_201_CREATED)
-def create_brouillon(
-    body: BrouillonCreate,
+@router.post("/", response_model=PreparationOut, status_code=status.HTTP_201_CREATED)
+def create_preparation(
+    body: PreparationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    b = Brouillon(
+    b = Preparation(
         date_dimanche=body.date_dimanche,
         auteur_id=current_user.id,
         liturgie=body.liturgie,
@@ -125,195 +125,35 @@ def create_brouillon(
     return _build_out(b)
 
 
-@router.get("/{brouillon_id}", response_model=BrouillonOut)
-def get_brouillon(
-    brouillon_id: int,
+@router.get("/historique/officiel", response_model=list[PreparationSummary])
+def historique(
+    q: str | None = Query(None, description="Recherche texte libre"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ):
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if not b.visible and b.auteur_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Ce brouillon est privé")
-    return _build_out(b)
-
-
-@router.post("/{brouillon_id}/visibilite", response_model=BrouillonOut)
-def set_visibilite(
-    brouillon_id: int,
-    body: VisibiliteBody,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """L'auteur contrôle la visibilité de son brouillon."""
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.auteur_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Seul l'auteur peut modifier la visibilité")
-    if b.statut == StatutBrouillon.officiel:
-        raise HTTPException(status_code=400, detail="Un brouillon officiel est toujours visible")
-    b.visible = body.visible
-    b.modifie_le = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(b)
-    return _build_out(b)
-
-
-@router.put("/{brouillon_id}", response_model=BrouillonOut)
-def update_brouillon(
-    brouillon_id: int,
-    body: BrouillonUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if not _can_edit(b, current_user):
-        raise HTTPException(
-            status_code=403, detail="Vous n'avez pas le droit de modifier ce brouillon"
+    query = db.query(Preparation).filter(
+        Preparation.statut == StatutPreparation.officiel
+    )
+    if q:
+        query = query.filter(
+            Preparation.lecon.ilike(f"%{q}%")
+            | Preparation.liturgie.ilike(f"%{q}%")
+            | Preparation.divers.ilike(f"%{q}%")
         )
-    if body.liturgie is not None:
-        b.liturgie = body.liturgie
-    if body.lecon is not None:
-        b.lecon = body.lecon
-    if body.divers is not None:
-        b.divers = body.divers
-    b.modifie_le = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(b)
-    return _build_out(b)
+    preparations = query.order_by(Preparation.date_dimanche.desc()).all()
+    return [_build_summary(b) for b in preparations]
 
 
-@router.delete("/{brouillon_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_brouillon(
-    brouillon_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    is_admin = current_user.role == RoleEnum.admin
-    if not is_admin and b.auteur_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Seul l'auteur ou un administrateur peut supprimer ce brouillon")
-    if not is_admin and b.statut == StatutBrouillon.officiel:
-        raise HTTPException(status_code=400, detail="Un brouillon officiel ne peut pas être supprimé")
-    db.delete(b)
-    db.commit()
-
-
-@router.post("/{brouillon_id}/soumettre", response_model=BrouillonOut)
-def soumettre(
-    brouillon_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Rend le brouillon visible au responsable (auteur uniquement). Le statut reste en_revision."""
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.auteur_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Seul l'auteur peut soumettre ce brouillon")
-    if b.statut != StatutBrouillon.en_revision:
-        raise HTTPException(status_code=400, detail="Ce brouillon ne peut pas être soumis dans son état actuel")
-    b.visible = True
-    b.modifie_le = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(b)
-    return _build_out(b)
-
-
-@router.post("/{brouillon_id}/valider", response_model=BrouillonOut)
-def valider(
-    brouillon_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Désigne le brouillon comme officiel (responsable uniquement)."""
-    if not _is_responsable(current_user):
-        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.statut == StatutBrouillon.officiel:
-        raise HTTPException(status_code=400, detail="Ce brouillon est déjà officiel")
-    if b.statut != StatutBrouillon.en_revision:
-        raise HTTPException(status_code=400, detail="Seul un brouillon en révision peut être validé")
-    # Supprime tout autre officiel pour ce dimanche (un seul autorisé)
-    existing = db.query(Brouillon).filter(
-        Brouillon.date_dimanche == b.date_dimanche,
-        Brouillon.statut == StatutBrouillon.officiel,
-    ).all()
-    for old in existing:
-        db.delete(old)
-    b.statut = StatutBrouillon.officiel
-    b.visible = True
-    b.valide_par = current_user.id
-    b.valide_le = datetime.now(timezone.utc)
-    b.modifie_le = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(b)
-    return _build_out(b)
-
-
-@router.post("/{brouillon_id}/revoquer", response_model=BrouillonOut)
-def revoquer(
-    brouillon_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Révoque la désignation officielle — remet en_revision (responsable uniquement)."""
-    if not _is_responsable(current_user):
-        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.statut != StatutBrouillon.officiel:
-        raise HTTPException(status_code=400, detail="Seul un brouillon officiel peut être révoqué")
-    b.statut = StatutBrouillon.en_revision
-    b.valide_par = None
-    b.valide_le = None
-    b.modifie_le = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(b)
-    return _build_out(b)
-
-
-@router.post("/{brouillon_id}/renvoyer", response_model=BrouillonOut)
-def renvoyer(
-    brouillon_id: int,
-    body: RenvoyerBody,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Ajoute un motif de retour sur un brouillon en révision (responsable uniquement)."""
-    if not _is_responsable(current_user):
-        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
-    if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
-    if b.statut != StatutBrouillon.en_revision:
-        raise HTTPException(status_code=400, detail="Ce brouillon n'est pas en révision")
-    b.motif_revision = body.motif.strip() or None
-    b.modifie_le = datetime.now(timezone.utc)
-    db.commit()
-    db.refresh(b)
-    return _build_out(b)
-
-
-@router.post("/dupliquer", response_model=BrouillonOut, status_code=status.HTTP_201_CREATED)
+@router.post("/dupliquer", response_model=PreparationOut, status_code=status.HTTP_201_CREATED)
 def dupliquer(
-    body: BrouillonDuplicate,
+    body: PreparationDuplicate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    source = db.query(Brouillon).filter(Brouillon.id == body.source_id).first()
+    source = db.query(Preparation).filter(Preparation.id == body.source_id).first()
     if not source:
-        raise HTTPException(status_code=404, detail="Brouillon source introuvable")
-    nouveau = Brouillon(
+        raise HTTPException(status_code=404, detail="Préparation source introuvable")
+    nouveau = Preparation(
         date_dimanche=body.date_dimanche,
         auteur_id=current_user.id,
         liturgie=source.liturgie,
@@ -336,20 +176,174 @@ def dupliquer(
     return _build_out(nouveau)
 
 
-@router.get("/historique/officiel", response_model=list[BrouillonSummary])
-def historique(
-    q: str | None = Query(None, description="Recherche texte libre"),
+@router.get("/{preparation_id}", response_model=PreparationOut)
+def get_preparation(
+    preparation_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Brouillon).filter(
-        Brouillon.statut == StatutBrouillon.officiel
-    )
-    if q:
-        query = query.filter(
-            Brouillon.lecon.ilike(f"%{q}%")
-            | Brouillon.liturgie.ilike(f"%{q}%")
-            | Brouillon.divers.ilike(f"%{q}%")
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if not b.visible and b.auteur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Cette préparation est privée")
+    return _build_out(b)
+
+
+@router.post("/{preparation_id}/visibilite", response_model=PreparationOut)
+def set_visibilite(
+    preparation_id: int,
+    body: VisibiliteBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if b.auteur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Seul l'auteur peut modifier la visibilité")
+    if b.statut == StatutPreparation.officiel:
+        raise HTTPException(status_code=400, detail="Une préparation officielle est toujours visible")
+    b.visible = body.visible
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)
+
+
+@router.put("/{preparation_id}", response_model=PreparationOut)
+def update_preparation(
+    preparation_id: int,
+    body: PreparationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if not _can_edit(b, current_user):
+        raise HTTPException(
+            status_code=403, detail="Vous n'avez pas le droit de modifier cette préparation"
         )
-    brouillons = query.order_by(Brouillon.date_dimanche.desc()).all()
-    return [_build_summary(b) for b in brouillons]
+    if body.liturgie is not None:
+        b.liturgie = body.liturgie
+    if body.lecon is not None:
+        b.lecon = body.lecon
+    if body.divers is not None:
+        b.divers = body.divers
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)
+
+
+@router.delete("/{preparation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_preparation(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    is_admin = current_user.role == RoleEnum.admin
+    if not is_admin and b.auteur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Seul l'auteur ou un administrateur peut supprimer cette préparation")
+    if not is_admin and b.statut == StatutPreparation.officiel:
+        raise HTTPException(status_code=400, detail="Une préparation officielle ne peut pas être supprimée")
+    db.delete(b)
+    db.commit()
+
+
+@router.post("/{preparation_id}/soumettre", response_model=PreparationOut)
+def soumettre(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if b.auteur_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Seul l'auteur peut soumettre cette préparation")
+    if b.statut != StatutPreparation.en_revision:
+        raise HTTPException(status_code=400, detail="Cette préparation ne peut pas être soumise dans son état actuel")
+    b.visible = True
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)
+
+
+@router.post("/{preparation_id}/valider", response_model=PreparationOut)
+def valider(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not _is_responsable(current_user):
+        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if b.statut == StatutPreparation.officiel:
+        raise HTTPException(status_code=400, detail="Cette préparation est déjà officielle")
+    if b.statut != StatutPreparation.en_revision:
+        raise HTTPException(status_code=400, detail="Seule une préparation en révision peut être validée")
+    existing = db.query(Preparation).filter(
+        Preparation.date_dimanche == b.date_dimanche,
+        Preparation.statut == StatutPreparation.officiel,
+    ).all()
+    for old in existing:
+        db.delete(old)
+    b.statut = StatutPreparation.officiel
+    b.visible = True
+    b.valide_par = current_user.id
+    b.valide_le = datetime.now(timezone.utc)
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)
+
+
+@router.post("/{preparation_id}/revoquer", response_model=PreparationOut)
+def revoquer(
+    preparation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not _is_responsable(current_user):
+        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if b.statut != StatutPreparation.officiel:
+        raise HTTPException(status_code=400, detail="Seule une préparation officielle peut être révoquée")
+    b.statut = StatutPreparation.en_revision
+    b.valide_par = None
+    b.valide_le = None
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)
+
+
+@router.post("/{preparation_id}/renvoyer", response_model=PreparationOut)
+def renvoyer(
+    preparation_id: int,
+    body: RenvoyerBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not _is_responsable(current_user):
+        raise HTTPException(status_code=403, detail="Accès réservé aux responsables")
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
+    if b.statut != StatutPreparation.en_revision:
+        raise HTTPException(status_code=400, detail="Cette préparation n'est pas en révision")
+    b.motif_revision = body.motif.strip() or None
+    b.modifie_le = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(b)
+    return _build_out(b)

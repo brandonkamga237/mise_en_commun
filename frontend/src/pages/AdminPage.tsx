@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getUtilisateurs, createUtilisateur, updateUtilisateur, deleteUtilisateur } from '../api/client';
+import { getUtilisateurs, createUtilisateur, updateUtilisateur, deleteUtilisateur, regenererMatricule } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { Spinner } from '../components/ui/Spinner';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -29,12 +29,14 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ nom: '', email: '', mot_de_passe: '', role: 'moniteur' as Role });
+  const [form, setForm] = useState({ nom: '', prenom: '', mot_de_passe: '', role: 'moniteur' as Role });
   const [creating, setCreating] = useState(false);
   const [userASupprimer, setUserASupprimer] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [roleConfirm, setRoleConfirm] = useState<{ user: User; newRole: Role } | null>(null);
   const [changingRole, setChangingRole] = useState(false);
+  const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [matriculeRevele, setMatriculeRevele] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -52,9 +54,22 @@ export default function AdminPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await createUtilisateur(form);
-      toast.success(`${form.nom} a été ajouté.`);
-      setForm({ nom: '', email: '', mot_de_passe: '', role: 'moniteur' });
+      const created = await createUtilisateur({
+        nom: form.nom,
+        prenom: form.prenom || undefined,
+        mot_de_passe: form.mot_de_passe,
+        role: form.role,
+      });
+      toast.success(
+        <div>
+          <strong>{form.nom}</strong> a été ajouté.<br />
+          <span style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em' }}>
+            Matricule : {created.matricule}
+          </span>
+        </div>,
+        { duration: 8000 }
+      );
+      setForm({ nom: '', prenom: '', mot_de_passe: '', role: 'moniteur' });
       setShowForm(false);
       load();
     } catch {} finally {
@@ -88,6 +103,25 @@ export default function AdminPage() {
     }
   };
 
+  const handleRegenerer = async (u: User) => {
+    setRegenerating(u.id);
+    try {
+      const updated = await regenererMatricule(u.id);
+      toast.success(
+        <div>
+          Nouveau matricule de <strong>{u.nom}</strong> :<br />
+          <span style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em' }}>
+            {updated.matricule}
+          </span>
+        </div>,
+        { duration: 10000 }
+      );
+      load();
+    } catch {} finally {
+      setRegenerating(null);
+    }
+  };
+
   return (
     <div className="page-wrapper">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
@@ -96,7 +130,7 @@ export default function AdminPage() {
             Administration
           </h1>
           <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 4 }}>
-            Gestion des moniteurs et des rôles
+            Gestion des moniteurs, rôles et matricules
           </p>
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => setShowForm(s => !s)}>
@@ -104,37 +138,40 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Formulaire ajout — colonnes flexibles (1 col sur mobile, 2 sur desktop) */}
+      {/* Formulaire ajout */}
       {showForm && (
         <div className="card card-left-gold" style={{ marginBottom: 24 }}>
           <h3 style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 16 }}>
             Nouveau moniteur
           </h3>
+          <p style={{ fontSize: 12, color: 'var(--fg-muted)', marginBottom: 16 }}>
+            Le matricule sera généré automatiquement et affiché après la création.
+          </p>
           <form onSubmit={handleCreate}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Nom</label>
+              <div style={{ flex: '1 1 180px' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Nom *</label>
                 <input
                   className="field"
                   type="text"
                   value={form.nom}
                   onChange={e => setForm(f => ({ ...f, nom: e.target.value }))}
                   required
-                  placeholder="Prénom Nom"
+                  placeholder="Nom de famille"
                 />
               </div>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Email</label>
+              <div style={{ flex: '1 1 180px' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Prénom</label>
                 <input
                   className="field"
-                  type="email"
-                  value={form.email}
-                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  required
+                  type="text"
+                  value={form.prenom}
+                  onChange={e => setForm(f => ({ ...f, prenom: e.target.value }))}
+                  placeholder="Optionnel"
                 />
               </div>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Mot de passe</label>
+              <div style={{ flex: '1 1 180px' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Mot de passe *</label>
                 <input
                   className="field"
                   type="password"
@@ -146,8 +183,8 @@ export default function AdminPage() {
                   minLength={6}
                 />
               </div>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Rôle</label>
+              <div style={{ flex: '1 1 180px' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Rôle *</label>
                 <select
                   className="field"
                   value={form.role}
@@ -178,21 +215,50 @@ export default function AdminPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                   <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--fg-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Nom</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--fg-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Email</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--fg-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Matricule</th>
                   <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--fg-secondary)', fontSize: 11, textTransform: 'uppercase' }}>Rôle</th>
-                  <th style={{ width: 80 }} />
+                  <th style={{ width: 120 }} />
                 </tr>
               </thead>
               <tbody>
                 {users.map((u, i) => (
                   <tr key={u.id} style={{ background: i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-page)', borderBottom: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '10px 12px', fontWeight: 500, color: 'var(--fg-primary)' }}>
-                      {u.nom}
+                      {u.prenom ? `${u.prenom} ${u.nom}` : u.nom}
                       {u.id === me?.id && (
                         <span style={{ fontSize: 10, marginLeft: 6, color: 'var(--fg-muted)' }}>(vous)</span>
                       )}
                     </td>
-                    <td style={{ padding: '10px 12px', color: 'var(--fg-secondary)' }}>{u.email}</td>
+                    <td style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            letterSpacing: '0.06em',
+                            color: matriculeRevele === u.id ? 'var(--fg-primary)' : 'transparent',
+                            background: matriculeRevele === u.id ? 'transparent' : 'var(--fg-muted)',
+                            borderRadius: 4,
+                            padding: '1px 4px',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                          }}
+                          title="Cliquez pour révéler"
+                          onClick={() => setMatriculeRevele(v => v === u.id ? null : u.id)}
+                        >
+                          {u.matricule ?? '—'}
+                        </span>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ fontSize: 10, padding: '2px 6px', color: 'var(--fg-muted)' }}
+                          disabled={regenerating === u.id}
+                          onClick={() => handleRegenerer(u)}
+                          title="Générer un nouveau matricule"
+                        >
+                          {regenerating === u.id ? <Spinner size={10} /> : '↻ Regénérer'}
+                        </button>
+                      </div>
+                    </td>
                     <td style={{ padding: '10px 12px' }}>
                       {u.id === me?.id ? (
                         <span style={{ fontSize: 12, color: ROLE_COLORS[u.role], fontWeight: 600 }}>
@@ -209,7 +275,7 @@ export default function AdminPage() {
                         </select>
                       )}
                     </td>
-                    <td style={{ padding: '10px 8px' }}>
+                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>
                       {u.id !== me?.id && (
                         <button
                           className="btn btn-ghost btn-sm"

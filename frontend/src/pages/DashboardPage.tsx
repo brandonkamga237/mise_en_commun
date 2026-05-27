@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBrouillons, getHistorique, dupliquerBrouillon, createBrouillon, downloadPdf } from '../api/client';
+import { getPreparations, getHistorique, dupliquerPreparation, createPreparation, downloadPdf } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Spinner } from '../components/ui/Spinner';
-import type { BrouillonSummary } from '../types';
+import type { PreparationSummary } from '../types';
 import toast from 'react-hot-toast';
 
 function localDateStr(d: Date = new Date()): string {
@@ -42,9 +42,9 @@ export default function DashboardPage() {
   const [dimanche1, dimanche2] = getUpcomingSundays();
   const jours1 = daysUntil(dimanche1);
 
-  const [brouillons1, setBrouillons1] = useState<BrouillonSummary[]>([]);
-  const [brouillons2, setBrouillons2] = useState<BrouillonSummary[]>([]);
-  const [historique, setHistorique] = useState<BrouillonSummary[]>([]);
+  const [preparations1, setPreparations1] = useState<PreparationSummary[]>([]);
+  const [preparations2, setPreparations2] = useState<PreparationSummary[]>([]);
+  const [historique, setHistorique] = useState<PreparationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
@@ -55,12 +55,12 @@ export default function DashboardPage() {
       setLoadError(false);
       try {
         const [sem1, sem2, hist] = await Promise.all([
-          getBrouillons({ date_dimanche: dimanche1 }),
-          getBrouillons({ date_dimanche: dimanche2 }),
+          getPreparations({ date_dimanche: dimanche1 }),
+          getPreparations({ date_dimanche: dimanche2 }),
           getHistorique(),
         ]);
-        setBrouillons1(sem1);
-        setBrouillons2(sem2);
+        setPreparations1(sem1);
+        setPreparations2(sem2);
         setHistorique(hist.slice(0, 5));
       } catch {
         setLoadError(true);
@@ -74,16 +74,16 @@ export default function DashboardPage() {
   const handleCreate = async (date: string) => {
     setCreating(date);
     try {
-      const b = await createBrouillon({ date_dimanche: date });
-      navigate(`/brouillons/${b.id}`);
+      const b = await createPreparation({ date_dimanche: date });
+      navigate(`/preparations/${b.id}`);
     } catch {} finally { setCreating(null); }
   };
 
   const handleDupliquer = async (sourceId: number, targetDate: string) => {
     try {
-      const b = await dupliquerBrouillon(sourceId, targetDate);
-      toast.success('Brouillon dupliqué.');
-      navigate(`/brouillons/${b.id}`);
+      const b = await dupliquerPreparation(sourceId, targetDate);
+      toast.success('Préparation dupliquée.');
+      navigate(`/preparations/${b.id}`);
     } catch {}
   };
 
@@ -116,11 +116,11 @@ export default function DashboardPage() {
     );
   }
 
-  const monBrouillon1 = brouillons1.find(b => b.auteur.id === user?.id);
-  const monBrouillon2 = brouillons2.find(b => b.auteur.id === user?.id);
-  const candidats1 = brouillons1.filter(b => b.statut === 'en_revision' && b.visible);
-  const officiel1 = brouillons1.find(b => b.statut === 'officiel');
-  const officiel2 = brouillons2.find(b => b.statut === 'officiel');
+  const maPreparation1 = preparations1.find(b => b.auteur.id === user?.id);
+  const maPreparation2 = preparations2.find(b => b.auteur.id === user?.id);
+  const candidats1 = preparations1.filter(b => b.statut === 'en_revision' && b.visible);
+  const officiel1 = preparations1.find(b => b.statut === 'officiel');
+  const officiel2 = preparations2.find(b => b.statut === 'officiel');
   const prenom = user?.nom.trim().split(/\s+/)[0] ?? '';
 
   return (
@@ -138,14 +138,14 @@ export default function DashboardPage() {
 
       {/* ── Mon action (P0: user action first) ───────────────── */}
       <MyActionCard
-        monBrouillon={monBrouillon1}
+        maPreparation={maPreparation1}
         dimanche={dimanche1}
         creating={creating === dimanche1}
         onCreate={() => handleCreate(dimanche1)}
-        onOpen={(id) => navigate(`/brouillons/${id}`)}
+        onOpen={(id) => navigate(`/preparations/${id}`)}
         isResp={isResp}
         candidats={candidats1}
-        onVoirCandidats={() => navigate('/brouillons')}
+        onVoirCandidats={() => navigate('/preparations')}
       />
 
       {/* ── État de l'équipe pour ce dimanche ────────────────── */}
@@ -175,14 +175,14 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>✅</div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#14532D' }}>Brouillon validé</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#14532D' }}>Préparation validée</div>
                   <div style={{ fontSize: 13, color: 'var(--fg-muted)' }}>
                     par {officiel1.auteur.nom} · {officiel1.nb_chants} chant{officiel1.nb_chants !== 1 ? 's' : ''}
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className="btn btn-primary btn-sm" onClick={() => navigate(`/brouillons/${officiel1.id}`)}>Consulter</button>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate(`/preparations/${officiel1.id}`)}>Consulter</button>
                 <button className="btn btn-secondary btn-sm" onClick={() => downloadPdf(officiel1.id)}>
                   PDF ↓
                 </button>
@@ -195,9 +195,9 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg-primary)' }}>
-                  {brouillons1.length === 0 ? 'Aucun brouillon proposé' : `${brouillons1.length} brouillon${brouillons1.length > 1 ? 's' : ''} en cours`}
+                  {preparations1.length === 0 ? 'Aucune préparation proposée' : `${preparations1.length} préparation${preparations1.length > 1 ? 's' : ''} en cours`}
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--fg-muted)' }}>Pas encore de brouillon validé</div>
+                <div style={{ fontSize: 13, color: 'var(--fg-muted)' }}>Pas encore de préparation validée</div>
               </div>
             </div>
           )}
@@ -205,9 +205,9 @@ export default function DashboardPage() {
 
         <div className="hero-card-footer">
           <span style={{ fontSize: 13, color: 'var(--fg-secondary)' }}>
-            {brouillons1.length} brouillon{brouillons1.length !== 1 ? 's' : ''} soumis
+            {preparations1.length} préparation{preparations1.length !== 1 ? 's' : ''} soumise{preparations1.length !== 1 ? 's' : ''}
           </span>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/brouillons')}>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/preparations')}>
             Voir l'équipe →
           </button>
         </div>
@@ -224,17 +224,17 @@ export default function DashboardPage() {
               {fmtLong(dimanche2)}
             </div>
             <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 2 }}>
-              {brouillons2.length === 0 ? 'Aucun brouillon' : `${brouillons2.length} brouillon${brouillons2.length > 1 ? 's' : ''}`}
-              {officiel2 && <span style={{ color: '#16A34A', marginLeft: 6, fontWeight: 600 }}>· Validé</span>}
+              {preparations2.length === 0 ? 'Aucune préparation' : `${preparations2.length} préparation${preparations2.length > 1 ? 's' : ''}`}
+              {officiel2 && <span style={{ color: '#16A34A', marginLeft: 6, fontWeight: 600 }}>· Validée</span>}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
             {officiel2 ? (
-              <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/brouillons/${officiel2.id}`)}>Consulter</button>
-            ) : monBrouillon2 ? (
+              <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/preparations/${officiel2.id}`)}>Consulter</button>
+            ) : maPreparation2 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <StatusPill statut={monBrouillon2.statut} />
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/brouillons/${monBrouillon2.id}`)}>→</button>
+                <StatusPill statut={maPreparation2.statut} />
+                <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/preparations/${maPreparation2.id}`)}>→</button>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -270,7 +270,7 @@ export default function DashboardPage() {
               padding: '8px 0',
               borderBottom: i < historique.length - 1 ? '1px solid var(--border-subtle)' : 'none',
               cursor: 'pointer',
-            }} onClick={() => navigate(`/brouillons/${h.id}`)}>
+            }} onClick={() => navigate(`/preparations/${h.id}`)}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-primary)' }}>
                   {new Date(h.date_dimanche + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -295,17 +295,17 @@ export default function DashboardPage() {
 
 // ── Mon action card ──────────────────────────────────────────
 interface MyActionCardProps {
-  monBrouillon: BrouillonSummary | undefined;
+  maPreparation: PreparationSummary | undefined;
   dimanche: string;
   creating: boolean;
   onCreate: () => void;
   onOpen: (id: number) => void;
   isResp: boolean;
-  candidats: BrouillonSummary[];
+  candidats: PreparationSummary[];
   onVoirCandidats: () => void;
 }
 
-function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isResp, candidats, onVoirCandidats }: MyActionCardProps) {
+function MyActionCard({ maPreparation, dimanche, creating, onCreate, onOpen, isResp, candidats, onVoirCandidats }: MyActionCardProps) {
   if (isResp && candidats.length > 0) {
     return (
       <div style={{
@@ -316,7 +316,7 @@ function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isRe
         <div style={{ width: 40, height: 40, borderRadius: 10, background: '#FEF3C7', border: '1px solid #FDE68A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>⏳</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#92400E' }}>
-            {candidats.length} brouillon{candidats.length > 1 ? 's' : ''} à valider
+            {candidats.length} préparation{candidats.length > 1 ? 's' : ''} à valider
           </div>
           <div style={{ fontSize: 13, color: '#B45309', marginTop: 2 }}>
             En attente de ta validation pour ce dimanche
@@ -329,7 +329,7 @@ function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isRe
     );
   }
 
-  if (!monBrouillon) {
+  if (!maPreparation) {
     return (
       <div style={{
         background: 'var(--brand-navy)', borderRadius: 12,
@@ -339,10 +339,10 @@ function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isRe
           Mon action
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
-          Propose ton brouillon
+          Propose ta préparation
         </div>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 14, lineHeight: 1.5 }}>
-          Tu n'as pas encore créé de brouillon pour {fmtLong(dimanche)}.
+          Tu n'as pas encore créé de préparation pour {fmtLong(dimanche)}.
         </div>
         <button
           className="btn btn-lg"
@@ -350,22 +350,22 @@ function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isRe
           onClick={onCreate}
           disabled={creating}
         >
-          {creating ? <Spinner size={16} /> : '+ Créer mon brouillon'}
+          {creating ? <Spinner size={16} /> : '+ Créer ma préparation'}
         </button>
       </div>
     );
   }
 
   const statusMsg: Record<string, { icon: string; text: string; color: string }> = {
-    cree:           { icon: '✏️', text: 'Complète et soumets ton brouillon.', color: 'var(--fg-primary)' },
+    cree:           { icon: '✏️', text: 'Complète et soumets ta préparation.', color: 'var(--fg-primary)' },
     en_revision:    { icon: '↩️', text: 'Un retour t\'a été envoyé. Corrige et resoumets.', color: '#DC2626' },
-    candidat_final: { icon: '⏳', text: 'Soumis — en attente de validation.', color: '#B45309' },
-    officiel:       { icon: '✅', text: 'Ton brouillon est validé pour ce dimanche !', color: '#14532D' },
-    archive:        { icon: '📦', text: 'Ce brouillon est archivé.', color: 'var(--fg-muted)' },
+    candidat_final: { icon: '⏳', text: 'Soumise — en attente de validation.', color: '#B45309' },
+    officiel:       { icon: '✅', text: 'Ta préparation est validée pour ce dimanche !', color: '#14532D' },
+    archive:        { icon: '📦', text: 'Cette préparation est archivée.', color: 'var(--fg-muted)' },
   };
 
-  const info = statusMsg[monBrouillon.statut] ?? statusMsg.cree;
-  const isUrgent = monBrouillon.statut === 'cree' || monBrouillon.statut === 'en_revision';
+  const info = statusMsg[maPreparation.statut] ?? statusMsg.cree;
+  const isUrgent = maPreparation.statut === 'cree' || maPreparation.statut === 'en_revision';
 
   return (
     <div style={{
@@ -375,7 +375,7 @@ function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isRe
       boxShadow: isUrgent ? '0 4px 16px rgba(30,45,74,0.20)' : 'var(--shadow-card)',
     }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: isUrgent ? 'rgba(255,255,255,0.5)' : 'var(--fg-muted)', marginBottom: 6 }}>
-        Mon brouillon
+        Ma préparation
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 22, flexShrink: 0 }}>{info.icon}</span>
@@ -384,13 +384,13 @@ function MyActionCard({ monBrouillon, dimanche, creating, onCreate, onOpen, isRe
             {info.text}
           </div>
           <div style={{ fontSize: 12, color: isUrgent ? 'rgba(255,255,255,0.55)' : 'var(--fg-muted)', marginTop: 2 }}>
-            {monBrouillon.nb_chants} chant{monBrouillon.nb_chants !== 1 ? 's' : ''}
+            {maPreparation.nb_chants} chant{maPreparation.nb_chants !== 1 ? 's' : ''}
           </div>
         </div>
         <button
           className="btn btn-sm"
           style={isUrgent ? { background: 'var(--brand-gold)', color: '#fff', flexShrink: 0 } : { flexShrink: 0 }}
-          onClick={() => onOpen(monBrouillon.id)}
+          onClick={() => onOpen(maPreparation.id)}
         >
           {isUrgent ? 'Ouvrir →' : 'Consulter →'}
         </button>

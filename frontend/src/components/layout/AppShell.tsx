@@ -6,9 +6,9 @@ import { Avatar } from '../ui/Avatar';
 
 function getPageTitle(pathname: string): string {
   if (pathname === '/tableau-de-bord') return 'Accueil';
-  if (pathname === '/mes-brouillons') return 'Mes brouillons';
-  if (/^\/brouillons\/\d+/.test(pathname)) return 'Brouillon';
-  if (pathname === '/brouillons') return 'Équipe';
+  if (pathname === '/mes-preparations') return 'Mes préparations';
+  if (/^\/preparations\/\d+/.test(pathname)) return 'Préparation';
+  if (pathname === '/preparations') return 'Équipe';
   if (pathname === '/historique') return 'Historique';
   if (pathname === '/presence') return 'Présence';
   if (pathname === '/admin') return 'Administration';
@@ -24,18 +24,18 @@ export default function AppShell() {
   const isResp = user?.role === 'responsable' || user?.role === 'admin';
   const isAdmin = user?.role === 'admin';
   const path = location.pathname;
-  const isDetailPage = /^\/brouillons\/\d+/.test(path);
+  const isDetailPage = /^\/preparations\/\d+/.test(path);
   const pageTitle = getPageTitle(path);
 
   useEffect(() => { setSheetOpen(false); }, [path]);
 
   const tabs = [
     { to: '/tableau-de-bord', label: 'Accueil',    icon: <IcoHome /> },
-    { to: '/mes-brouillons',  label: 'Brouillons', icon: <IcoFile /> },
-    { to: '/brouillons',      label: 'Équipe',     icon: <IcoPeople /> },
+    { to: '/mes-preparations',  label: 'Préparat.', icon: <IcoFile /> },
+    { to: '/preparations',      label: 'Équipe',    icon: <IcoPeople /> },
   ];
 
-  const isActive = (to: string) => path === to || (to !== '/brouillons' && path.startsWith(to + '/'));
+  const isActive = (to: string) => path === to || (to !== '/preparations' && path.startsWith(to + '/'));
 
   return (
     <div className="app-shell">
@@ -98,8 +98,12 @@ export default function AppShell() {
             }}>
               {user && <Avatar nom={user.nom} size={42} />}
               <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)' }}>{user?.nom}</div>
-                <div style={{ fontSize: 12, color: 'var(--fg-muted)', marginTop: 1 }}>{user?.email}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)' }}>
+                  {user?.prenom ? `${user.prenom} ${user.nom}` : user?.nom}
+                </div>
+                <div style={{ fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.04em', color: 'var(--fg-muted)', marginTop: 1 }}>
+                  {user?.matricule ?? user?.email}
+                </div>
               </div>
             </div>
             <div style={{ padding: '6px 0' }}>

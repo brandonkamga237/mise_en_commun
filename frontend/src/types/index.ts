@@ -1,6 +1,9 @@
 export type Role = 'moniteur' | 'responsable' | 'admin';
 
-export type StatutBrouillon = 'cree' | 'en_revision' | 'candidat_final' | 'officiel' | 'archive';
+export type StatutPreparation = 'cree' | 'en_revision' | 'candidat_final' | 'officiel' | 'archive';
+
+// Alias de compatibilité
+export type StatutBrouillon = StatutPreparation;
 
 export type Etape =
   | 'salutation'
@@ -25,9 +28,14 @@ export type StatutPresence = 'present' | 'absent' | 'excuse';
 
 export interface User {
   id: number;
+  matricule: string | null;
   nom: string;
-  email: string;
+  prenom: string | null;
+  email: string | null;
   role: Role;
+  photo_url: string | null;
+  adresse: string | null;
+  telephone: string | null;
   cree_le: string;
 }
 
@@ -39,19 +47,22 @@ export interface Chant {
   etape: Etape;
 }
 
-export interface BrouillonSummary {
+export interface PreparationSummary {
   id: number;
   date_dimanche: string;
   auteur: User;
   modifie_le: string;
-  statut: StatutBrouillon;
+  statut: StatutPreparation;
   visible: boolean;
   nb_chants: number;
   nb_commentaires: number;
   apercu_lecon: string;
 }
 
-export interface Brouillon extends BrouillonSummary {
+// Alias de compatibilité
+export type BrouillonSummary = PreparationSummary;
+
+export interface Preparation extends PreparationSummary {
   cree_le: string;
   liturgie: string;
   lecon: string;
@@ -62,6 +73,9 @@ export interface Brouillon extends BrouillonSummary {
   chants: Chant[];
   nb_commentaires: number;
 }
+
+// Alias de compatibilité
+export type Brouillon = Preparation;
 
 export interface PresenceStat {
   user: User;
@@ -107,7 +121,7 @@ export const ETAPES_LABELS: Record<Etape, string> = {
   sortie: 'Sortie',
 };
 
-export const STATUT_LABELS: Record<StatutBrouillon, string> = {
+export const STATUT_LABELS: Record<StatutPreparation, string> = {
   cree: 'Brouillon',
   en_revision: 'En révision',
   candidat_final: 'En attente',

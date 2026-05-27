@@ -56,9 +56,9 @@ export default function App() {
           </RequireAuth>
         }>
           <Route path="/tableau-de-bord" element={<DashboardPage />} />
-          <Route path="/mes-brouillons" element={<BrouillonListPage mineOnly />} />
-          <Route path="/brouillons" element={<BrouillonListPage />} />
-          <Route path="/brouillons/:id" element={<BrouillonDetailPage />} />
+          <Route path="/mes-preparations" element={<BrouillonListPage mineOnly />} />
+          <Route path="/preparations" element={<BrouillonListPage />} />
+          <Route path="/preparations/:id" element={<BrouillonDetailPage />} />
           <Route path="/historique" element={<HistoriquePage />} />
           <Route path="/presence" element={
             <RequireResp><PresencePage /></RequireResp>
@@ -67,6 +67,11 @@ export default function App() {
             <RequireAdmin><AdminPage /></RequireAdmin>
           } />
           <Route path="/profil" element={<ProfilPage />} />
+
+          {/* Redirections des anciens chemins */}
+          <Route path="/mes-brouillons" element={<Navigate to="/mes-preparations" replace />} />
+          <Route path="/brouillons" element={<Navigate to="/preparations" replace />} />
+          <Route path="/brouillons/:id" element={<NavigatePreparation />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/tableau-de-bord" replace />} />
@@ -74,4 +79,9 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   );
+}
+
+function NavigatePreparation() {
+  const id = window.location.pathname.split('/').pop();
+  return <Navigate to={`/preparations/${id}`} replace />;
 }

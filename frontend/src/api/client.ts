@@ -1,8 +1,8 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import type {
-  Brouillon,
-  BrouillonSummary,
+  Preparation,
+  PreparationSummary,
   Chant,
   Commentaire,
   Etape,
@@ -11,6 +11,9 @@ import type {
   StatutPresence,
   User,
 } from '../types';
+
+// Aliases de compatibilité
+export type { Preparation as Brouillon, PreparationSummary as BrouillonSummary };
 
 const api = axios.create({
   baseURL: '/api',
@@ -52,92 +55,114 @@ api.interceptors.response.use(
 );
 
 // ── Auth ─────────────────────────────────────────────────────
-export const login = (email: string, mot_de_passe: string) =>
-  api.post<{ access_token: string }>('/auth/connexion', { email, mot_de_passe }).then((r) => r.data);
+export const login = (matricule: string, mot_de_passe: string) =>
+  api.post<{ access_token: string }>('/auth/connexion', { matricule, mot_de_passe }).then((r) => r.data);
 
-export const setup = (nom: string, email: string, mot_de_passe: string) =>
-  api.post<{ access_token: string }>('/auth/initialisation', { nom, email, mot_de_passe }).then((r) => r.data);
+export const setup = (nom: string, mot_de_passe: string, prenom?: string) =>
+  api.post<{ access_token: string; matricule?: string }>('/auth/initialisation', { nom, mot_de_passe, prenom }).then((r) => r.data);
 
 export const getMe = () =>
   api.get<User>('/auth/moi').then((r) => r.data);
+
+export const updateProfil = (data: { nom?: string; prenom?: string; mot_de_passe?: string; adresse?: string; telephone?: string }) =>
+  api.put<User>('/auth/profil', data).then((r) => r.data);
+
+export const uploadPhoto = (file: File) => {
+  const form = new FormData();
+  form.append('file', file);
+  return api.post<User>('/auth/profil/photo', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);
+};
 
 // ── Utilisateurs ─────────────────────────────────────────────
 export const getUtilisateurs = () =>
   api.get<User[]>('/utilisateurs/').then((r) => r.data);
 
-export const createUtilisateur = (data: { nom: string; email: string; mot_de_passe: string; role: string }) =>
+export const createUtilisateur = (data: { nom: string; prenom?: string; mot_de_passe: string; role: string; email?: string }) =>
   api.post<User>('/utilisateurs/', data).then((r) => r.data);
 
-export const updateUtilisateur = (id: number, data: { nom?: string; role?: string }) =>
+export const updateUtilisateur = (id: number, data: { nom?: string; prenom?: string; role?: string }) =>
   api.put<User>(`/utilisateurs/${id}`, data).then((r) => r.data);
 
 export const deleteUtilisateur = (id: number) =>
   api.delete(`/utilisateurs/${id}`);
 
-// ── Brouillons ───────────────────────────────────────────────
-export const getBrouillons = (params?: { date_dimanche?: string; statut?: string; auteur_id?: number }) =>
-  api.get<BrouillonSummary[]>('/brouillons/', { params }).then((r) => r.data);
+export const regenererMatricule = (id: number) =>
+  api.post<User>(`/utilisateurs/${id}/regenerer-matricule`).then((r) => r.data);
 
-export const getBrouillon = (id: number) =>
-  api.get<Brouillon>(`/brouillons/${id}`).then((r) => r.data);
+// ── Préparations ──────────────────────────────────────────────
+export const getPreparations = (params?: { date_dimanche?: string; statut?: string; auteur_id?: number }) =>
+  api.get<PreparationSummary[]>('/preparations/', { params }).then((r) => r.data);
 
-export const createBrouillon = (data: { date_dimanche: string; liturgie?: string; lecon?: string; divers?: string }) =>
-  api.post<Brouillon>('/brouillons/', data).then((r) => r.data);
+export const getPreparation = (id: number) =>
+  api.get<Preparation>(`/preparations/${id}`).then((r) => r.data);
 
-export const updateBrouillon = (id: number, data: { liturgie?: string; lecon?: string; divers?: string }) =>
-  api.put<Brouillon>(`/brouillons/${id}`, data).then((r) => r.data);
+export const createPreparation = (data: { date_dimanche: string; liturgie?: string; lecon?: string; divers?: string }) =>
+  api.post<Preparation>('/preparations/', data).then((r) => r.data);
 
-export const deleteBrouillon = (id: number) =>
-  api.delete(`/brouillons/${id}`);
+export const updatePreparation = (id: number, data: { liturgie?: string; lecon?: string; divers?: string }) =>
+  api.put<Preparation>(`/preparations/${id}`, data).then((r) => r.data);
+
+export const deletePreparation = (id: number) =>
+  api.delete(`/preparations/${id}`);
 
 export const soumettreCandidat = (id: number) =>
-  api.post<Brouillon>(`/brouillons/${id}/soumettre`).then((r) => r.data);
+  api.post<Preparation>(`/preparations/${id}/soumettre`).then((r) => r.data);
 
 export const validerOfficiel = (id: number) =>
-  api.post<Brouillon>(`/brouillons/${id}/valider`).then((r) => r.data);
+  api.post<Preparation>(`/preparations/${id}/valider`).then((r) => r.data);
 
 export const renvoyerRevision = (id: number, motif: string) =>
-  api.post<Brouillon>(`/brouillons/${id}/renvoyer`, { motif }).then((r) => r.data);
+  api.post<Preparation>(`/preparations/${id}/renvoyer`, { motif }).then((r) => r.data);
 
 export const revoquerOfficiel = (id: number) =>
-  api.post<Brouillon>(`/brouillons/${id}/revoquer`).then((r) => r.data);
+  api.post<Preparation>(`/preparations/${id}/revoquer`).then((r) => r.data);
 
-export const dupliquerBrouillon = (source_id: number, date_dimanche: string) =>
-  api.post<Brouillon>('/brouillons/dupliquer', { source_id, date_dimanche }).then((r) => r.data);
+export const dupliquerPreparation = (source_id: number, date_dimanche: string) =>
+  api.post<Preparation>('/preparations/dupliquer', { source_id, date_dimanche }).then((r) => r.data);
 
 export const getHistorique = (q?: string) =>
-  api.get<BrouillonSummary[]>('/brouillons/historique/officiel', { params: { q } }).then((r) => r.data);
+  api.get<PreparationSummary[]>('/preparations/historique/officiel', { params: { q } }).then((r) => r.data);
 
 export const setVisibilite = (id: number, visible: boolean) =>
-  api.post<Brouillon>(`/brouillons/${id}/visibilite`, { visible }).then((r) => r.data);
+  api.post<Preparation>(`/preparations/${id}/visibilite`, { visible }).then((r) => r.data);
+
+// Aliases de compatibilité (noms anciens)
+export const getBrouillons = getPreparations;
+export const getBrouillon = getPreparation;
+export const createBrouillon = createPreparation;
+export const updateBrouillon = updatePreparation;
+export const deleteBrouillon = deletePreparation;
+export const dupliquerBrouillon = dupliquerPreparation;
 
 // ── Chants ───────────────────────────────────────────────────
-export const getChants = (brouillonId: number) =>
-  api.get<Chant[]>(`/brouillons/${brouillonId}/chants/`).then((r) => r.data);
+export const getChants = (preparationId: number) =>
+  api.get<Chant[]>(`/preparations/${preparationId}/chants/`).then((r) => r.data);
 
-export const addChant = (brouillonId: number, data: { titre: string; etape: Etape; ordre?: number }) =>
-  api.post<Chant>(`/brouillons/${brouillonId}/chants/`, data).then((r) => r.data);
+export const addChant = (preparationId: number, data: { titre: string; etape: Etape; ordre?: number }) =>
+  api.post<Chant>(`/preparations/${preparationId}/chants/`, data).then((r) => r.data);
 
-export const updateChant = (brouillonId: number, chantId: number, data: { titre?: string; etape?: Etape; ordre?: number }) =>
-  api.put<Chant>(`/brouillons/${brouillonId}/chants/${chantId}`, data).then((r) => r.data);
+export const updateChant = (preparationId: number, chantId: number, data: { titre?: string; etape?: Etape; ordre?: number }) =>
+  api.put<Chant>(`/preparations/${preparationId}/chants/${chantId}`, data).then((r) => r.data);
 
-export const deleteChant = (brouillonId: number, chantId: number) =>
-  api.delete(`/brouillons/${brouillonId}/chants/${chantId}`);
+export const deleteChant = (preparationId: number, chantId: number) =>
+  api.delete(`/preparations/${preparationId}/chants/${chantId}`);
 
-export const reorderChants = (brouillonId: number, ids: number[]) =>
-  api.put<Chant[]>(`/brouillons/${brouillonId}/chants/reorder`, { ids }).then((r) => r.data);
+export const reorderChants = (preparationId: number, ids: number[]) =>
+  api.put<Chant[]>(`/preparations/${preparationId}/chants/reorder`, { ids }).then((r) => r.data);
 
 // ── Commentaires ─────────────────────────────────────────────
-export const getCommentaires = (brouillonId: number) =>
-  api.get<Commentaire[]>(`/brouillons/${brouillonId}/commentaires/`).then((r) => r.data);
+export const getCommentaires = (preparationId: number) =>
+  api.get<Commentaire[]>(`/preparations/${preparationId}/commentaires/`).then((r) => r.data);
 
-export const addCommentaire = (brouillonId: number, data: {
+export const addCommentaire = (preparationId: number, data: {
   contenu: string;
   cible_type: string;
   cible_id: number;
   parent_id?: number;
 }) =>
-  api.post<Commentaire>(`/brouillons/${brouillonId}/commentaires/`, data).then((r) => r.data);
+  api.post<Commentaire>(`/preparations/${preparationId}/commentaires/`, data).then((r) => r.data);
 
 // ── Présence ─────────────────────────────────────────────────
 export const getPresence = (date_samedi: string) =>
@@ -153,19 +178,15 @@ export const getStatsParticipation = (params?: { mois?: number; annee?: number }
   api.get<PresenceStat[]>('/presence/stats/participation', { params }).then((r) => r.data);
 
 // ── PDF ──────────────────────────────────────────────────────
-export async function downloadPdf(brouillonId: number, filename?: string): Promise<void> {
-  const res = await api.get(`/brouillons/${brouillonId}/pdf`, { responseType: 'blob' });
+export async function downloadPdf(preparationId: number, filename?: string): Promise<void> {
+  const res = await api.get(`/preparations/${preparationId}/pdf`, { responseType: 'blob' });
   const blob = new Blob([res.data], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename ?? `culte-${brouillonId}.pdf`;
+  a.download = filename ?? `culte-${preparationId}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
-
-// ── Profil ───────────────────────────────────────────────────
-export const updateProfil = (data: { nom?: string; mot_de_passe?: string }) =>
-  api.put<User>('/auth/profil', data).then((r) => r.data);

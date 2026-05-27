@@ -1,17 +1,18 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    matricule: str
     mot_de_passe: str
 
 
 class SetupRequest(BaseModel):
     nom: str
-    email: EmailStr
     mot_de_passe: str
+    prenom: str | None = None
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    matricule: str | None = None

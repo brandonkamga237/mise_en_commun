@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar } from '../ui/Avatar';
 import { StatusPill } from '../ui/StatusPill';
 import { TimeAgo } from '../ui/TimeAgo';
-import type { BrouillonSummary } from '../../types';
+import type { PreparationSummary } from '../../types';
+type BrouillonSummary = PreparationSummary;
 import { downloadPdf, validerOfficiel, soumettreCandidat } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import toast from 'react-hot-toast';
@@ -47,7 +48,7 @@ export function BrouillonCard({ brouillon, onRefresh }: BrouillonCardProps) {
         borderLeft: isOfficiel ? '3px solid #16A34A' : '3px solid transparent',
         transition: 'box-shadow 0.15s',
       }}
-      onClick={() => navigate(`/brouillons/${brouillon.id}`)}
+      onClick={() => navigate(`/preparations/${brouillon.id}`)}
     >
       {/* Row 1: Avatar + name + status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

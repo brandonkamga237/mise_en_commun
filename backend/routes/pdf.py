@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.dependencies import get_current_user
-from models.brouillon import Brouillon
+from models.brouillon import Preparation
 from models.chant import ETAPES_LABELS
 from models.user import User
 
-router = APIRouter(prefix="/brouillons", tags=["pdf"])
+router = APIRouter(prefix="/preparations", tags=["pdf"])
 
 NAVY = "#1E2D4A"
 BLUE = "#2B4C7E"
@@ -24,10 +24,10 @@ GREEN = "#15803D"
 AMBER = "#D97706"
 
 STATUT_FR = {
-    "cree": "Brouillon",
     "en_revision": "En révision",
-    "candidat_final": "En attente",
     "officiel": "Validé",
+    "cree": "Brouillon",
+    "candidat_final": "En attente",
     "archive": "Archivé",
 }
 
@@ -53,9 +53,9 @@ def _safe(text: str | None) -> str:
     )
 
 
-@router.get("/{brouillon_id}/pdf")
+@router.get("/{preparation_id}/pdf")
 def generate_pdf(
-    brouillon_id: int,
+    preparation_id: int,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
@@ -76,34 +76,29 @@ def generate_pdf(
     except ImportError:
         raise HTTPException(status_code=500, detail="La bibliothèque PDF n'est pas installée")
 
-    b = db.query(Brouillon).filter(Brouillon.id == brouillon_id).first()
+    b = db.query(Preparation).filter(Preparation.id == preparation_id).first()
     if not b:
-        raise HTTPException(status_code=404, detail="Brouillon introuvable")
+        raise HTTPException(status_code=404, detail="Préparation introuvable")
 
     buf = io.BytesIO()
 
     def on_page(canvas, doc):
         canvas.saveState()
         w, h = A4
-        # Header bar navy
         canvas.setFillColor(colors.HexColor(NAVY))
         canvas.rect(0, h - 28 * mm, w, 28 * mm, fill=1, stroke=0)
-        # Gold accent line under header
         canvas.setFillColor(colors.HexColor(GOLD))
         canvas.rect(0, h - 30 * mm, w, 2 * mm, fill=1, stroke=0)
-        # Header: org name
         canvas.setFillColor(colors.white)
         canvas.setFont("Helvetica-Bold", 11)
         canvas.drawString(2 * cm, h - 14 * mm, "Mises en Commun")
         canvas.setFont("Helvetica", 8.5)
         canvas.setFillColor(colors.HexColor("#AABBD4"))
         canvas.drawString(2 * cm, h - 20 * mm, "Culte d'enfants  ·  " + _format_date_fr(b.date_dimanche))
-        # Status badge
         statut_val = b.statut.value if hasattr(b.statut, "value") else str(b.statut)
         statut_label = STATUT_FR.get(statut_val, statut_val)
         badge_color = {
             "Validé": GREEN,
-            "En attente": AMBER,
             "En révision": "#DC2626",
         }.get(statut_label, MUTED)
         canvas.setFillColor(colors.HexColor(badge_color))
@@ -114,7 +109,6 @@ def generate_pdf(
         canvas.setFillColor(colors.white)
         canvas.setFont("Helvetica-Bold", 7.5)
         canvas.drawCentredString(badge_x + badge_w / 2, badge_y + 3.5, statut_label)
-        # Footer
         canvas.setFillColor(colors.HexColor(CREAM))
         canvas.rect(0, 0, w, 16 * mm, fill=1, stroke=0)
         canvas.setFillColor(colors.HexColor(STONE))
@@ -122,11 +116,11 @@ def generate_pdf(
         canvas.setFillColor(colors.HexColor(MUTED))
         canvas.setFont("Helvetica", 7.5)
         now = datetime.now(timezone.utc).strftime("%d/%m/%Y à %H:%M UTC")
-        auteur_info = f"Brouillon de {b.auteur.nom}"
+        auteur_info = f"Préparation de {b.auteur.nom}"
         if b.validateur:
-            auteur_info += f"  ·  Validé par {b.validateur.nom}"
+            auteur_info += f"  ·  Validée par {b.validateur.nom}"
         canvas.drawString(2 * cm, 10 * mm, auteur_info)
-        canvas.drawString(2 * cm, 5 * mm, f"Généré le {now}")
+        canvas.drawString(2 * cm, 5 * mm, f"Générée le {now}")
         canvas.setFont("Helvetica-Bold", 8)
         canvas.setFillColor(colors.HexColor(NAVY))
         canvas.drawRightString(w - 2 * cm, 7 * mm, f"Page {doc.page}")
@@ -160,20 +154,17 @@ def generate_pdf(
 
     story = []
 
-    # Title block
     story.append(Paragraph(_format_date_fr(b.date_dimanche), h1_style))
-    meta_parts = [f"Brouillon de <b>{b.auteur.nom}</b>"]
+    meta_parts = [f"Préparation de <b>{b.auteur.nom}</b>"]
     if b.validateur:
-        meta_parts.append(f"validé par <b>{b.validateur.nom}</b>")
+        meta_parts.append(f"validée par <b>{b.validateur.nom}</b>")
     story.append(Paragraph("  ·  ".join(meta_parts), muted_style))
 
-    # Motif de révision
     if b.motif_revision:
-        story.append(Paragraph(f"⚠ Renvoyé en révision : {_safe(b.motif_revision)}", motif_style))
+        story.append(Paragraph(f"⚠ Renvoyée en révision : {_safe(b.motif_revision)}", motif_style))
 
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(STONE), spaceAfter=4))
 
-    # ── Chants ──────────────────────────────────────────────────
     story.append(Paragraph("Chants", h2_style))
     chants_sorted = sorted(b.chants, key=lambda c: c.ordre)
     if chants_sorted:
@@ -202,7 +193,6 @@ def generate_pdf(
     else:
         story.append(Paragraph("Aucun chant renseigné.", empty_style))
 
-    # ── Liturgie ────────────────────────────────────────────────
     story.append(HRFlowable(width="100%", thickness=0.3, color=colors.HexColor(STONE), spaceBefore=8, spaceAfter=2))
     story.append(Paragraph("Liturgie", h2_style))
     if b.liturgie and b.liturgie.strip():
@@ -210,7 +200,6 @@ def generate_pdf(
     else:
         story.append(Paragraph("Non renseignée.", empty_style))
 
-    # ── Leçon ───────────────────────────────────────────────────
     story.append(HRFlowable(width="100%", thickness=0.3, color=colors.HexColor(STONE), spaceBefore=8, spaceAfter=2))
     story.append(Paragraph("Leçon", h2_style))
     if b.lecon and b.lecon.strip():
@@ -218,7 +207,6 @@ def generate_pdf(
     else:
         story.append(Paragraph("Non renseignée.", empty_style))
 
-    # ── Divers ──────────────────────────────────────────────────
     story.append(HRFlowable(width="100%", thickness=0.3, color=colors.HexColor(STONE), spaceBefore=8, spaceAfter=2))
     story.append(Paragraph("Informations et divers", h2_style))
     if b.divers and b.divers.strip():

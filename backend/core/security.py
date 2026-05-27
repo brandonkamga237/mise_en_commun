@@ -1,9 +1,16 @@
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 from jose import JWTError, jwt
 
 from core.config import settings
+
+
+def generate_matricule() -> str:
+    chars = string.ascii_uppercase + string.digits
+    return "MCM-" + "".join(secrets.choice(chars) for _ in range(6))
 
 
 def hash_password(password: str) -> str:

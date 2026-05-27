@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getHistorique, downloadPdf } from '../api/client';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Spinner } from '../components/ui/Spinner';
-import type { BrouillonSummary } from '../types';
+import type { PreparationSummary } from '../types';
 
 function formatDateFr(dateStr: string): string {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('fr-FR', {
@@ -17,7 +17,7 @@ function getYear(dateStr: string): number {
 
 export default function HistoriquePage() {
   const navigate = useNavigate();
-  const [brouillons, setBrouillons] = useState<BrouillonSummary[]>([]);
+  const [brouillons, setBrouillons] = useState<PreparationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -49,7 +49,7 @@ export default function HistoriquePage() {
     ? brouillons.filter(b => getYear(b.date_dimanche) === anneeFiltre)
     : brouillons;
 
-  const grouped: Record<number, BrouillonSummary[]> = {};
+  const grouped: Record<number, PreparationSummary[]> = {};
   filtered.forEach(b => {
     const y = getYear(b.date_dimanche);
     if (!grouped[y]) grouped[y] = [];
@@ -105,7 +105,7 @@ export default function HistoriquePage() {
           <p style={{ fontSize: 15, color: 'var(--fg-muted)' }}>
             {debouncedQuery
               ? `Aucun résultat pour « ${debouncedQuery} »`
-              : "Aucun brouillon officiel dans l'historique."}
+              : "Aucune préparation officielle dans l'historique."}
           </p>
         </div>
       ) : (
@@ -124,7 +124,7 @@ export default function HistoriquePage() {
                 key={b.id}
                 className="card"
                 style={{ marginBottom: 10, cursor: 'pointer' }}
-                onClick={() => navigate(`/brouillons/${b.id}`)}
+                onClick={() => navigate(`/preparations/${b.id}`)}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -143,7 +143,7 @@ export default function HistoriquePage() {
                   <StatusPill statut={b.statut} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }} onClick={e => e.stopPropagation()}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/brouillons/${b.id}`)}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/preparations/${b.id}`)}>
                     Consulter
                   </button>
                   <button

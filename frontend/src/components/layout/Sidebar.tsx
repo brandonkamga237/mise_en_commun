@@ -31,7 +31,7 @@ export function Sidebar() {
   const isAdmin = user?.role === 'admin';
   const path = location.pathname;
 
-  const at = (p: string) => path === p || (p !== '/brouillons' && path.startsWith(p + '/'));
+  const at = (p: string) => path === p || (p !== '/preparations' && path.startsWith(p + '/'));
 
   return (
     <div style={{
@@ -58,8 +58,8 @@ export function Sidebar() {
       {/* Nav links */}
       <nav style={{ flex: 1, paddingTop: 10, overflowY: 'auto' }}>
         <NavItem icon={<IcoHome />} label="Tableau de bord" to="/tableau-de-bord" active={at('/tableau-de-bord')} />
-        <NavItem icon={<IcoFile />} label="Mes brouillons" to="/mes-brouillons" active={at('/mes-brouillons')} />
-        <NavItem icon={<IcoPeople />} label="Équipe" to="/brouillons" active={path === '/brouillons'} />
+        <NavItem icon={<IcoFile />} label="Mes préparations" to="/mes-preparations" active={at('/mes-preparations')} />
+        <NavItem icon={<IcoPeople />} label="Équipe" to="/preparations" active={path === '/preparations'} />
         <NavItem icon={<IcoClock />} label="Historique" to="/historique" active={at('/historique')} />
 
         {isResp && (

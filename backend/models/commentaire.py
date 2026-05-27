@@ -28,12 +28,12 @@ class Commentaire(Base):
     contenu = Column(Text, nullable=False)
     cible_type = Column(Enum(CibleTypeEnum), nullable=False)
     cible_id = Column(Integer, nullable=False)
-    brouillon_id = Column(Integer, ForeignKey("brouillons.id"), nullable=False)
+    brouillon_id = Column(Integer, ForeignKey("preparations.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("commentaires.id"), nullable=True)
     resolu = Column(Boolean, default=False, nullable=False)
 
     auteur = relationship("User", back_populates="commentaires")
-    brouillon = relationship("Brouillon", back_populates="commentaires")
+    preparation = relationship("Preparation", back_populates="commentaires")
     reponses = relationship(
         "Commentaire",
         back_populates="parent",

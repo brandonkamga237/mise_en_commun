@@ -40,6 +40,10 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - uploads_data:/uploads
+    environment:
+      UPLOADS_DIR: /uploads
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/sante"]
       interval: 30s
@@ -58,6 +62,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
 
 networks:
   default:

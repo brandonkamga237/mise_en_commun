@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBrouillons, createBrouillon } from '../api/client';
+import { getPreparations, createPreparation } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { BrouillonCard } from '../components/brouillon/BrouillonCard';
 import { Spinner } from '../components/ui/Spinner';
-import type { BrouillonSummary } from '../types';
+import type { PreparationSummary } from '../types';
 import toast from 'react-hot-toast';
 
 function localDateStr(d: Date = new Date()): string {
@@ -33,7 +33,7 @@ interface BrouillonListPageProps {
 export default function BrouillonListPage({ mineOnly = false }: BrouillonListPageProps) {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [brouillons, setBrouillons] = useState<BrouillonSummary[]>([]);
+  const [preparations, setPreparations] = useState<PreparationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -48,8 +48,8 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
     try {
       const params: { auteur_id?: number } = {};
       if (mineOnly && user) params.auteur_id = user.id;
-      const data = await getBrouillons(params);
-      setBrouillons(data);
+      const data = await getPreparations(params);
+      setPreparations(data);
     } catch {
       setError(true);
     } finally {
@@ -72,17 +72,17 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
     setCreating(true);
     setFabOpen(false);
     try {
-      const b = await createBrouillon({ date_dimanche: date });
-      navigate(`/brouillons/${b.id}`);
+      const b = await createPreparation({ date_dimanche: date });
+      navigate(`/preparations/${b.id}`);
     } catch {
-      toast.error('Impossible de créer le brouillon.');
+      toast.error('Impossible de créer la préparation.');
     } finally {
       setCreating(false);
     }
   };
 
   // Group by date_dimanche desc, sort each group by status priority
-  const grouped = brouillons.reduce<Record<string, BrouillonSummary[]>>((acc, b) => {
+  const grouped = preparations.reduce<Record<string, PreparationSummary[]>>((acc, b) => {
     (acc[b.date_dimanche] ??= []).push(b);
     return acc;
   }, {});
@@ -97,7 +97,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
     date < today && items.length > 0 && items.every(b => b.statut === 'en_revision');
 
   const staleDatesCount = sortedDates.filter(date => {
-    const items = mineOnly ? grouped[date].filter(b => b.auteur.id === user?.id) : grouped[date];
+    const items = mineOnly ? grouped[date].filter((b: PreparationSummary) => b.auteur.id === user?.id) : grouped[date];
     return isStale(date, items);
   }).length;
 
@@ -132,21 +132,21 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
     );
   }
 
-  if (brouillons.length === 0) {
+  if (preparations.length === 0) {
     return (
       <>
         <div className="empty-state" style={{ paddingTop: 48 }}>
           <div className="empty-state-icon"><IcoFileEmpty /></div>
           <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg-primary)', marginBottom: 4 }}>
-            {mineOnly ? 'Aucun brouillon pour l\'instant' : 'Aucun brouillon cette semaine'}
+            {mineOnly ? 'Aucune préparation pour l\'instant' : 'Aucune préparation cette semaine'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16 }}>
             {mineOnly
-              ? 'Crée ton premier brouillon pour commencer.'
-              : 'Personne n\'a encore soumis de brouillon.'}
+              ? 'Crée ta première préparation pour commencer.'
+              : 'Personne n\'a encore soumis de préparation.'}
           </div>
           <button className="btn btn-primary btn-sm" onClick={() => handleCreate(selectedDate)} disabled={creating}>
-            {creating ? <Spinner size={14} /> : '+ Créer un brouillon'}
+            {creating ? <Spinner size={14} /> : '+ Créer une préparation'}
           </button>
         </div>
         <FabCreate
@@ -171,7 +171,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
           onChange={e => setSelectedDate(e.target.value)}
         />
         <button className="btn btn-primary btn-sm" onClick={() => handleCreate(selectedDate)} disabled={creating}>
-          {creating ? <Spinner size={14} /> : '+ Nouveau brouillon'}
+          {creating ? <Spinner size={14} /> : '+ Nouvelle préparation'}
         </button>
       </div>
 
@@ -191,7 +191,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
               {fmtDate(date)}
               {!mineOnly && (
                 <span style={{ fontWeight: 400 }}>
-                  · {items.length} brouillon{items.length > 1 ? 's' : ''}
+                  · {items.length} préparation{items.length > 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -209,7 +209,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
         >
           {showAll
             ? '↑ Masquer les anciens brouillons non soumis'
-            : `↓ Afficher ${staleDatesCount} semaine${staleDatesCount > 1 ? 's' : ''} sans soumission`}
+            : `↓ Afficher ${staleDatesCount} semaine${staleDatesCount > 1 ? 's' : ''} sans préparation`}
         </button>
       )}
 
@@ -266,7 +266,7 @@ function FabCreate({ fabRef, fabOpen, setFabOpen, selectedDate, setSelectedDate,
             onClick={() => onCreate(selectedDate)}
             disabled={creating}
           >
-            {creating ? <Spinner size={14} /> : 'Créer le brouillon'}
+            {creating ? <Spinner size={14} /> : 'Créer la préparation'}
           </button>
         </div>
       )}

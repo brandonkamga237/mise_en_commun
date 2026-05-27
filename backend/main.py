@@ -1,12 +1,14 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
 from core.database import Base, engine
 from models import (  # noqa: F401 — registration before create_all
-    Brouillon,
+    Preparation,
     Chant,
     Commentaire,
     Presence,
@@ -23,16 +25,19 @@ from routes import (
     users_router,
 )
 
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/uploads")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    os.makedirs(os.path.join(UPLOADS_DIR, "photos"), exist_ok=True)
     yield
 
 
 app = FastAPI(
     title=settings.APP_NAME,
-    version="3.0.0",
+    version="4.0.0",
     description="Système de gestion des mises en commun — Culte d'enfants",
     lifespan=lifespan,
 )
@@ -53,6 +58,10 @@ app.include_router(commentaires_router, prefix="/api")
 app.include_router(commentaires_extra_router, prefix="/api")
 app.include_router(presence_router, prefix="/api")
 app.include_router(pdf_router, prefix="/api")
+
+# Serve uploaded files (photos de profil, etc.)
+if os.path.isdir(UPLOADS_DIR):
+    app.mount("/api/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 
 @app.get("/api/sante")

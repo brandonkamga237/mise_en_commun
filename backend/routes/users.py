@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.dependencies import get_current_user
-from core.security import hash_password
+from core.security import generate_matricule, hash_password
 from models.user import RoleEnum, User
 from schemas.user import UserCreate, UserOut, UserUpdate
 
@@ -28,6 +28,14 @@ def _require_responsable(current_user: User = Depends(get_current_user)) -> User
     return current_user
 
 
+def _assign_unique_matricule(db: Session) -> str:
+    for _ in range(20):
+        m = generate_matricule()
+        if not db.query(User).filter(User.matricule == m).first():
+            return m
+    raise RuntimeError("Impossible de générer un matricule unique")
+
+
 @router.get("/", response_model=list[UserOut])
 def list_users(
     db: Session = Depends(get_db),
@@ -42,14 +50,19 @@ def create_user(
     db: Session = Depends(get_db),
     _: User = Depends(_require_admin),
 ):
-    if db.query(User).filter(User.email == body.email).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Un utilisateur avec cet email existe déjà",
-        )
+    # Vérifier unicité email si fourni
+    if body.email:
+        if db.query(User).filter(User.email == body.email).first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Un utilisateur avec cet email existe déjà",
+            )
+    matricule = _assign_unique_matricule(db)
     user = User(
-        nom=body.nom,
-        email=body.email,
+        nom=body.nom.strip(),
+        prenom=body.prenom.strip() if body.prenom else None,
+        email=body.email.strip().lower() if body.email else None,
+        matricule=matricule,
         mot_de_passe_hash=hash_password(body.mot_de_passe),
         role=body.role,
     )
@@ -76,8 +89,26 @@ def update_user(
         )
     if body.nom is not None:
         user.nom = body.nom
+    if body.prenom is not None:
+        user.prenom = body.prenom or None
     if body.role is not None:
         user.role = body.role
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/{user_id}/regenerer-matricule", response_model=UserOut)
+def regenerer_matricule(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(_require_admin),
+):
+    """Génère un nouveau matricule pour l'utilisateur (admin uniquement)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    user.matricule = _assign_unique_matricule(db)
     db.commit()
     db.refresh(user)
     return user

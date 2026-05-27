@@ -4,23 +4,28 @@ import { login } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { Spinner } from '../components/ui/Spinner';
 
+const CONTACT_ADMIN = '+237 620 51 95 64';
+const MAX_ATTEMPTS = 3;
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setToken, loadMe } = useAuthStore();
-  const [email, setEmail] = useState('');
+  const [matricule, setMatricule] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [failCount, setFailCount] = useState(0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await login(email.trim(), password);
+      const res = await login(matricule.trim().toUpperCase(), password);
       setToken(res.access_token);
       await loadMe();
+      setFailCount(0);
       navigate('/tableau-de-bord');
     } catch {
-      // toast géré dans le client axios
+      setFailCount(n => n + 1);
     } finally {
       setLoading(false);
     }
@@ -86,22 +91,23 @@ export default function LoginPage() {
             Connexion
           </h2>
           <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 24 }}>
-            Entrez vos identifiants pour accéder à l'espace équipe.
+            Entrez votre matricule et mot de passe.
           </p>
 
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Adresse e-mail
+                Matricule
               </label>
               <input
                 className="field"
-                type="email"
-                placeholder="votre@email.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
+                type="text"
+                placeholder="MCM-XXXXXX"
+                value={matricule}
+                onChange={e => setMatricule(e.target.value.toUpperCase())}
+                autoComplete="username"
                 required
+                style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
               />
             </div>
             <div>
@@ -127,6 +133,24 @@ export default function LoginPage() {
               {loading ? <Spinner size={16} /> : 'Se connecter'}
             </button>
           </form>
+
+          {/* Message après 3 tentatives échouées */}
+          {failCount >= MAX_ATTEMPTS && (
+            <div style={{
+              marginTop: 16,
+              padding: '12px 14px',
+              background: '#FEF3C7',
+              border: '1px solid #F59E0B',
+              borderRadius: 8,
+              fontSize: 12,
+              color: '#92400E',
+              lineHeight: 1.6,
+            }}>
+              <strong>Matricule oublié ?</strong><br />
+              Contactez votre administrateur au{' '}
+              <strong>{CONTACT_ADMIN}</strong> pour qu'il vous génère un nouveau matricule.
+            </div>
+          )}
         </div>
 
         {/* Note informative */}

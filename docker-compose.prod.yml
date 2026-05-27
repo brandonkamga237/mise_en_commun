@@ -31,6 +31,10 @@ services:
     image: brandoniscoding/mise-en-commun-backend:latest
     restart: unless-stopped
     env_file: .env
+    environment:
+      UPLOADS_DIR: /uploads
+    volumes:
+      - uploads_data:/uploads
     networks:
       - internal
     depends_on:
@@ -62,6 +66,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
 
 networks:
   internal:

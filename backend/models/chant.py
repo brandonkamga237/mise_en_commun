@@ -37,9 +37,9 @@ class Chant(Base):
     __tablename__ = "chants"
 
     id = Column(Integer, primary_key=True, index=True)
-    brouillon_id = Column(Integer, ForeignKey("brouillons.id"), nullable=False)
+    brouillon_id = Column(Integer, ForeignKey("preparations.id"), nullable=False)
     ordre = Column(Integer, nullable=False, default=0)
     titre = Column(String(255), nullable=False)
     etape = Column(Enum(EtapeEnum), nullable=False)
 
-    brouillon = relationship("Brouillon", back_populates="chants")
+    preparation = relationship("Preparation", back_populates="chants")
