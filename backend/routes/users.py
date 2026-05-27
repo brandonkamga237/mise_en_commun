@@ -1,10 +1,11 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.dependencies import get_current_user
 from core.security import generate_matricule, hash_password
-import secrets
 from models.user import RoleEnum, User
 from schemas.user import UserCreate, UserOut, UserUpdate
 
