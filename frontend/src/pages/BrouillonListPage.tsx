@@ -93,7 +93,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
 
   const today = localDateStr();
   // Un groupe est "périmé" si le dimanche est passé et tous les brouillons sont non soumis (cree) ou archivés
-  const isStale = (date: string, items: BrouillonSummary[]) =>
+  const isStale = (date: string, items: PreparationSummary[]) =>
     date < today && items.length > 0 && items.every(b => b.statut === 'en_revision');
 
   const staleDatesCount = sortedDates.filter(date => {
