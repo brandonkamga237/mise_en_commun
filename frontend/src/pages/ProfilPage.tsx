@@ -18,22 +18,12 @@ export default function ProfilPage() {
   const [prenom, setPrenom] = useState(user?.prenom ?? '');
   const [adresse, setAdresse] = useState(user?.adresse ?? '');
   const [telephone, setTelephone] = useState(user?.telephone ?? '');
-  const [mdp, setMdp] = useState('');
-  const [mdpConfirm, setMdpConfirm] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mdp && mdp !== mdpConfirm) {
-      toast.error('Les mots de passe ne correspondent pas.');
-      return;
-    }
-    if (mdp && mdp.length < 6) {
-      toast.error('Le mot de passe doit faire au moins 6 caractères.');
-      return;
-    }
     setSaving(true);
     try {
       const data: Parameters<typeof updateProfil>[0] = {};
@@ -41,7 +31,6 @@ export default function ProfilPage() {
       if (prenom.trim() !== (user?.prenom ?? '')) data.prenom = prenom.trim();
       if (adresse.trim() !== (user?.adresse ?? '')) data.adresse = adresse.trim();
       if (telephone.trim() !== (user?.telephone ?? '')) data.telephone = telephone.trim();
-      if (mdp) data.mot_de_passe = mdp;
       if (Object.keys(data).length === 0) {
         toast('Aucune modification détectée.');
         return;
@@ -49,8 +38,6 @@ export default function ProfilPage() {
       await updateProfil(data);
       await loadMe();
       toast.success('Profil mis à jour.');
-      setMdp('');
-      setMdpConfirm('');
     } catch {} finally {
       setSaving(false);
     }
@@ -207,42 +194,6 @@ export default function ProfilPage() {
                 value={adresse}
                 onChange={e => setAdresse(e.target.value)}
                 placeholder="Quartier, ville…"
-              />
-            </div>
-          </div>
-
-          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-
-          <p style={{ fontSize: 12, color: 'var(--fg-muted)', margin: 0 }}>
-            Laisse les champs ci-dessous vides pour ne pas changer ton mot de passe.
-          </p>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ flex: '1 1 180px' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Nouveau mot de passe
-              </label>
-              <input
-                className="field"
-                type="password"
-                value={mdp}
-                onChange={e => setMdp(e.target.value)}
-                placeholder="6 caractères minimum"
-                autoComplete="new-password"
-                minLength={6}
-              />
-            </div>
-            <div style={{ flex: '1 1 180px' }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Confirmer
-              </label>
-              <input
-                className="field"
-                type="password"
-                value={mdpConfirm}
-                onChange={e => setMdpConfirm(e.target.value)}
-                placeholder="Répète le mot de passe"
-                autoComplete="new-password"
               />
             </div>
           </div>

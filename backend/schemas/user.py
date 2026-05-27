@@ -22,7 +22,6 @@ class UserOut(BaseModel):
 
 class UserCreate(BaseModel):
     nom: str
-    mot_de_passe: str
     prenom: str | None = None
     email: str | None = None
     role: RoleEnum = RoleEnum.moniteur

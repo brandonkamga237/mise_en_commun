@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from core.dependencies import get_current_user
 from core.security import generate_matricule, hash_password
+import secrets
 from models.user import RoleEnum, User
 from schemas.user import UserCreate, UserOut, UserUpdate
 
@@ -63,7 +64,7 @@ def create_user(
         prenom=body.prenom.strip() if body.prenom else None,
         email=body.email.strip().lower() if body.email else None,
         matricule=matricule,
-        mot_de_passe_hash=hash_password(body.mot_de_passe),
+        mot_de_passe_hash=hash_password(secrets.token_hex(32)),
         role=body.role,
     )
     db.add(user)

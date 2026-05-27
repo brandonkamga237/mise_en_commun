@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ nom: '', prenom: '', mot_de_passe: '', role: 'moniteur' as Role });
+  const [form, setForm] = useState({ nom: '', prenom: '', role: 'moniteur' as Role });
   const [creating, setCreating] = useState(false);
   const [userASupprimer, setUserASupprimer] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -57,7 +57,6 @@ export default function AdminPage() {
       const created = await createUtilisateur({
         nom: form.nom,
         prenom: form.prenom || undefined,
-        mot_de_passe: form.mot_de_passe,
         role: form.role,
       });
       toast.success(
@@ -69,7 +68,7 @@ export default function AdminPage() {
         </div>,
         { duration: 8000 }
       );
-      setForm({ nom: '', prenom: '', mot_de_passe: '', role: 'moniteur' });
+      setForm({ nom: '', prenom: '', role: 'moniteur' });
       setShowForm(false);
       load();
     } catch {} finally {
@@ -168,19 +167,6 @@ export default function AdminPage() {
                   value={form.prenom}
                   onChange={e => setForm(f => ({ ...f, prenom: e.target.value }))}
                   placeholder="Optionnel"
-                />
-              </div>
-              <div style={{ flex: '1 1 180px' }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 4 }}>Mot de passe *</label>
-                <input
-                  className="field"
-                  type="password"
-                  value={form.mot_de_passe}
-                  onChange={e => setForm(f => ({ ...f, mot_de_passe: e.target.value }))}
-                  required
-                  placeholder="6 caractères minimum"
-                  autoComplete="new-password"
-                  minLength={6}
                 />
               </div>
               <div style={{ flex: '1 1 180px' }}>

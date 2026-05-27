@@ -79,7 +79,7 @@ export const uploadPhoto = (file: File) => {
 export const getUtilisateurs = () =>
   api.get<User[]>('/utilisateurs/').then((r) => r.data);
 
-export const createUtilisateur = (data: { nom: string; prenom?: string; mot_de_passe: string; role: string; email?: string }) =>
+export const createUtilisateur = (data: { nom: string; prenom?: string; role: string; email?: string }) =>
   api.post<User>('/utilisateurs/', data).then((r) => r.data);
 
 export const updateUtilisateur = (id: number, data: { nom?: string; prenom?: string; role?: string }) =>
