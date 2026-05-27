@@ -11,7 +11,6 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { setToken, loadMe } = useAuthStore();
   const [matricule, setMatricule] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [failCount, setFailCount] = useState(0);
 
@@ -19,7 +18,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await login(matricule.trim().toUpperCase(), password);
+      const res = await login(matricule.trim().toUpperCase());
       setToken(res.access_token);
       await loadMe();
       setFailCount(0);
@@ -91,7 +90,7 @@ export default function LoginPage() {
             Connexion
           </h2>
           <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 24 }}>
-            Entrez votre matricule et mot de passe.
+            Entrez votre matricule pour accéder à l'application.
           </p>
 
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -106,22 +105,9 @@ export default function LoginPage() {
                 value={matricule}
                 onChange={e => setMatricule(e.target.value.toUpperCase())}
                 autoComplete="username"
+                autoFocus
                 required
-                style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Mot de passe
-              </label>
-              <input
-                className="field"
-                type="password"
-                placeholder="Votre mot de passe"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
+                style={{ fontFamily: 'monospace', letterSpacing: '0.08em', fontSize: 16 }}
               />
             </div>
             <button

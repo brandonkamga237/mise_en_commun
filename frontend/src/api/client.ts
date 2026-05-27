@@ -55,8 +55,8 @@ api.interceptors.response.use(
 );
 
 // ── Auth ─────────────────────────────────────────────────────
-export const login = (matricule: string, mot_de_passe: string) =>
-  api.post<{ access_token: string }>('/auth/connexion', { matricule, mot_de_passe }).then((r) => r.data);
+export const login = (matricule: string) =>
+  api.post<{ access_token: string }>('/auth/connexion', { matricule }).then((r) => r.data);
 
 export const setup = (nom: string, mot_de_passe: string, prenom?: string) =>
   api.post<{ access_token: string; matricule?: string }>('/auth/initialisation', { nom, mot_de_passe, prenom }).then((r) => r.data);

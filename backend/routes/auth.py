@@ -30,10 +30,10 @@ def _assign_unique_matricule(db: Session) -> str:
 @router.post("/connexion", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.matricule == body.matricule.strip().upper()).first()
-    if not user or not verify_password(body.mot_de_passe, user.mot_de_passe_hash):
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Matricule ou mot de passe incorrect",
+            detail="Matricule incorrect",
         )
     token = create_access_token(str(user.id))
     return TokenResponse(access_token=token)

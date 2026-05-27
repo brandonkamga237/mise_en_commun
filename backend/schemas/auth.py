@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 class LoginRequest(BaseModel):
     matricule: str
-    mot_de_passe: str
 
 
 class SetupRequest(BaseModel):
