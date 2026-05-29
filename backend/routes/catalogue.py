@@ -19,7 +19,7 @@ class CatalogueChantOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("/", response_model=list[CatalogueChantOut])
+@router.get("", response_model=list[CatalogueChantOut])
 def list_catalogue(
     q: str | None = Query(None),
     db: Session = Depends(get_db),
