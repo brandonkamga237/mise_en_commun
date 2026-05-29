@@ -240,7 +240,7 @@ export default function PresencePage() {
                         borderBottom: i < users.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                         transition: 'background 150ms ease',
                       }}>
-                        <Avatar nom={u.nom} size={32} />
+                        <Avatar nom={u.nom} photoUrl={u.photo_url} size={32} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {u.nom}
@@ -345,7 +345,7 @@ export default function PresencePage() {
                     }}>
                       <td style={{ padding: '10px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Avatar nom={s.user.nom} size={24} />
+                          <Avatar nom={s.user.nom} photoUrl={s.user.photo_url} size={24} />
                           <span style={{ fontWeight: 500, color: 'var(--fg-primary)' }}>{s.user.nom}</span>
                         </div>
                       </td>

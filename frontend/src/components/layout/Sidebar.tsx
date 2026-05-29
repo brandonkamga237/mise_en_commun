@@ -80,7 +80,7 @@ export function Sidebar() {
         borderTop: '1px solid rgba(255,255,255,0.08)',
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        {user && <Avatar nom={user.nom} size={28} />}
+        {user && <Avatar nom={user.nom} photoUrl={user.photo_url} size={28} />}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
             {user?.nom}

@@ -1,5 +1,6 @@
 interface AvatarProps {
   nom: string;
+  photoUrl?: string | null;
   size?: number;
 }
 
@@ -18,7 +19,7 @@ function getColorIndex(nom: string): number {
   return hash;
 }
 
-export function Avatar({ nom, size = 28 }: AvatarProps) {
+export function Avatar({ nom, photoUrl, size = 28 }: AvatarProps) {
   const bg = nom ? COLORS[getColorIndex(nom)] : COLORS[0];
   const initials = nom ? getInitials(nom) : '?';
   return (
@@ -37,9 +38,17 @@ export function Avatar({ nom, size = 28 }: AvatarProps) {
         fontWeight: 700,
         flexShrink: 0,
         userSelect: 'none',
+        overflow: 'hidden',
       }}
     >
-      {initials}
+      {photoUrl ? (
+        <img
+          src={photoUrl}
+          alt={nom}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      ) : initials}
     </div>
   );
 }

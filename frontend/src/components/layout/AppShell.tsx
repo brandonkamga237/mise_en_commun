@@ -54,7 +54,7 @@ export default function AppShell() {
           )}
           <span className="topbar-title">{pageTitle}</span>
           <button className="topbar-btn" onClick={() => setSheetOpen(true)} aria-label="Ouvrir mon profil">
-            {user ? <Avatar nom={user.nom} size={28} /> : <IcoUser />}
+            {user ? <Avatar nom={user.nom} photoUrl={user.photo_url} size={28} /> : <IcoUser />}
           </button>
         </div>
 
@@ -97,7 +97,7 @@ export default function AppShell() {
               padding: '16px 20px 14px', marginTop: 8,
               borderBottom: '1px solid var(--border-subtle)',
             }}>
-              {user && <Avatar nom={user.nom} size={42} />}
+              {user && <Avatar nom={user.nom} photoUrl={user.photo_url} size={42} />}
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)' }}>
                   {user?.prenom ? `${user.prenom} ${user.nom}` : user?.nom}
