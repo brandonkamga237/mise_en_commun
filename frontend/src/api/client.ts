@@ -177,6 +177,10 @@ export const getPresenceDates = () =>
 export const getStatsParticipation = (params?: { mois?: number; annee?: number }) =>
   api.get<PresenceStat[]>('/presence/stats/participation', { params }).then((r) => r.data);
 
+// ── Catalogue chants ─────────────────────────────────────────
+export const getCatalogueChants = (q?: string) =>
+  api.get<import('../types').CatalogueChant[]>('/catalogue-chants', { params: q ? { q } : {} }).then((r) => r.data);
+
 // ── PDF ──────────────────────────────────────────────────────
 export async function downloadPdf(preparationId: number, filename?: string): Promise<void> {
   const res = await api.get(`/preparations/${preparationId}/pdf`, { responseType: 'blob' });

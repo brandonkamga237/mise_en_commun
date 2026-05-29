@@ -11,6 +11,7 @@ import HistoriquePage from './pages/HistoriquePage';
 import PresencePage from './pages/PresencePage';
 import AdminPage from './pages/AdminPage';
 import ProfilPage from './pages/ProfilPage';
+import BibliothequeChants from './pages/BibliothequeChants';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { token, user, loading } = useAuthStore();
@@ -67,6 +68,7 @@ export default function App() {
             <RequireAdmin><AdminPage /></RequireAdmin>
           } />
           <Route path="/profil" element={<ProfilPage />} />
+          <Route path="/bibliotheque" element={<BibliothequeChants />} />
 
           {/* Redirections des anciens chemins */}
           <Route path="/mes-brouillons" element={<Navigate to="/mes-preparations" replace />} />

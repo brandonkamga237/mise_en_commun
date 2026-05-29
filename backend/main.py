@@ -14,9 +14,11 @@ from models import (  # noqa: F401 — registration before create_all
     Presence,
     User,
 )
+from models.catalogue_chant import CatalogueChant  # noqa: F401
 from routes import (
     auth_router,
     brouillons_router,
+    catalogue_router,
     chants_router,
     commentaires_router,
     commentaires_extra_router,
@@ -58,6 +60,7 @@ app.include_router(commentaires_router, prefix="/api")
 app.include_router(commentaires_extra_router, prefix="/api")
 app.include_router(presence_router, prefix="/api")
 app.include_router(pdf_router, prefix="/api")
+app.include_router(catalogue_router, prefix="/api")
 
 # Serve uploaded files (photos de profil, etc.)
 if os.path.isdir(UPLOADS_DIR):

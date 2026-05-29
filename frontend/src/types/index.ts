@@ -99,6 +99,13 @@ export interface Commentaire {
   reponses: Commentaire[];
 }
 
+export interface CatalogueChant {
+  id: number;
+  numero: string;
+  titre: string;
+  nb_utilisations: number;
+}
+
 export interface Presence {
   id: number;
   date_samedi: string;
