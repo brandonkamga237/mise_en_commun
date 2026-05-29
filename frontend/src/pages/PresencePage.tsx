@@ -69,7 +69,7 @@ export default function PresencePage() {
         getPresence(date),
         getPresenceDates(),
       ]);
-      setUsers(allUsers);
+      setUsers(allUsers.filter(u => u.role !== 'admin'));
       setEnregistreeDates(dates);
       const map: Record<number, StatutPresence> = {};
       pres.forEach((p: Presence) => { map[p.user.id] = p.statut; });
