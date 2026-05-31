@@ -7,6 +7,7 @@ from routes.commentaires import router_extra as commentaires_extra_router
 from routes.presence import router as presence_router
 from routes.pdf import router as pdf_router
 from routes.catalogue import router as catalogue_router
+from routes.formation import router as formation_router
 
 __all__ = [
     "auth_router",
@@ -18,4 +19,5 @@ __all__ = [
     "presence_router",
     "pdf_router",
     "catalogue_router",
+    "formation_router",
 ]

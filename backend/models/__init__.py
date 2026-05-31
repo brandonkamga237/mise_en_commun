@@ -3,6 +3,7 @@ from models.brouillon import Preparation, StatutPreparation, Brouillon, StatutBr
 from models.chant import Chant, EtapeEnum, ETAPES_LABELS
 from models.commentaire import Commentaire, CibleTypeEnum
 from models.presence import Presence, StatutPresence
+from models.formation import Cours, Lecon  # noqa: F401
 
 __all__ = [
     "User",
@@ -18,4 +19,6 @@ __all__ = [
     "CibleTypeEnum",
     "Presence",
     "StatutPresence",
+    "Cours",
+    "Lecon",
 ]

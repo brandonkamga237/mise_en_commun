@@ -22,6 +22,7 @@ from routes import (
     chants_router,
     commentaires_router,
     commentaires_extra_router,
+    formation_router,
     pdf_router,
     presence_router,
     users_router,
@@ -61,6 +62,7 @@ app.include_router(commentaires_extra_router, prefix="/api")
 app.include_router(presence_router, prefix="/api")
 app.include_router(pdf_router, prefix="/api")
 app.include_router(catalogue_router, prefix="/api")
+app.include_router(formation_router, prefix="/api")
 
 # Serve uploaded files (photos de profil, etc.)
 if os.path.isdir(UPLOADS_DIR):

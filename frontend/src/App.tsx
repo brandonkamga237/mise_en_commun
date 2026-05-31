@@ -12,6 +12,8 @@ import PresencePage from './pages/PresencePage';
 import AdminPage from './pages/AdminPage';
 import ProfilPage from './pages/ProfilPage';
 import BibliothequeChants from './pages/BibliothequeChants';
+import FormationPage from './pages/FormationPage';
+import CoursDetailPage from './pages/CoursDetailPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { token, user, loading } = useAuthStore();
@@ -69,6 +71,8 @@ export default function App() {
           } />
           <Route path="/profil" element={<ProfilPage />} />
           <Route path="/bibliotheque" element={<BibliothequeChants />} />
+          <Route path="/formation" element={<FormationPage />} />
+          <Route path="/formation/:id" element={<CoursDetailPage />} />
 
           {/* Redirections des anciens chemins */}
           <Route path="/mes-brouillons" element={<Navigate to="/mes-preparations" replace />} />

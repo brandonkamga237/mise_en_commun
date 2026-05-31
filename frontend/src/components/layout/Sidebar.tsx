@@ -62,6 +62,7 @@ export function Sidebar() {
         <NavItem icon={<IcoPeople />} label="Équipe" to="/preparations" active={path === '/preparations'} />
         <NavItem icon={<IcoClock />} label="Historique" to="/historique" active={at('/historique')} />
         <NavItem icon={<IcoBook />} label="Bibliothèque" to="/bibliotheque" active={at('/bibliotheque')} />
+        <NavItem icon={<IcoGradCap />} label="Formation" to="/formation" active={at('/formation')} />
 
         {isResp && (
           <>
@@ -125,6 +126,9 @@ function IcoSettings() {
 }
 function IcoBook() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>;
+}
+function IcoGradCap() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>;
 }
 function IcoLogout() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;

@@ -177,6 +177,31 @@ export const getPresenceDates = () =>
 export const getStatsParticipation = (params?: { mois?: number; annee?: number }) =>
   api.get<PresenceStat[]>('/presence/stats/participation', { params }).then((r) => r.data);
 
+// ── Formation ────────────────────────────────────────────────
+export const getCours = () =>
+  api.get<import('../types').CoursSummary[]>('/formations/cours').then((r) => r.data);
+
+export const createCours = (data: { titre: string; description?: string; publie?: boolean }) =>
+  api.post<import('../types').CoursDetail>('/formations/cours', data).then((r) => r.data);
+
+export const getCoursDetail = (id: number) =>
+  api.get<import('../types').CoursDetail>(`/formations/cours/${id}`).then((r) => r.data);
+
+export const updateCours = (id: number, data: { titre?: string; description?: string; publie?: boolean; ordre?: number }) =>
+  api.put<import('../types').CoursDetail>(`/formations/cours/${id}`, data).then((r) => r.data);
+
+export const deleteCours = (id: number) =>
+  api.delete(`/formations/cours/${id}`);
+
+export const createLecon = (coursId: number, data: { titre: string; contenu?: string; duree_minutes?: number }) =>
+  api.post<import('../types').Lecon>(`/formations/cours/${coursId}/lecons`, data).then((r) => r.data);
+
+export const updateLecon = (coursId: number, leconId: number, data: { titre?: string; contenu?: string; duree_minutes?: number }) =>
+  api.put<import('../types').Lecon>(`/formations/cours/${coursId}/lecons/${leconId}`, data).then((r) => r.data);
+
+export const deleteLecon = (coursId: number, leconId: number) =>
+  api.delete(`/formations/cours/${coursId}/lecons/${leconId}`);
+
 // ── Catalogue chants ─────────────────────────────────────────
 export const getCatalogueChants = (q?: string) =>
   api.get<import('../types').CatalogueChant[]>('/catalogue-chants', { params: q ? { q } : {} }).then((r) => r.data);

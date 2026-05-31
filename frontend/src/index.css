@@ -398,3 +398,56 @@
 
 .animate-spin  { animation: spin 0.7s linear infinite; }
 .animate-pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+/* ── Éditeur riche TipTap ────────────────────────────────────── */
+.rich-editor-wrapper .ProseMirror {
+  outline: none;
+  min-height: 200px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--fg-primary);
+}
+.rich-editor-wrapper .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--fg-muted);
+  pointer-events: none;
+  height: 0;
+}
+.rich-editor-wrapper .ProseMirror h1 { font-size: 1.5em; font-weight: 700; margin: 1em 0 0.4em; color: var(--fg-primary); }
+.rich-editor-wrapper .ProseMirror h2 { font-size: 1.25em; font-weight: 700; margin: 1em 0 0.4em; color: var(--fg-primary); }
+.rich-editor-wrapper .ProseMirror h3 { font-size: 1.1em; font-weight: 700; margin: 0.8em 0 0.3em; color: var(--fg-primary); }
+.rich-editor-wrapper .ProseMirror p  { margin: 0 0 0.6em; }
+.rich-editor-wrapper .ProseMirror ul, .rich-editor-wrapper .ProseMirror ol { margin: 0.4em 0 0.8em 1.4em; padding: 0; }
+.rich-editor-wrapper .ProseMirror li { margin-bottom: 0.2em; }
+.rich-editor-wrapper .ProseMirror blockquote {
+  border-left: 3px solid var(--brand-gold);
+  padding: 6px 14px;
+  margin: 0.8em 0;
+  color: var(--fg-secondary);
+  background: var(--bg-page);
+  border-radius: 0 6px 6px 0;
+}
+.rich-editor-wrapper .ProseMirror strong { font-weight: 700; }
+.rich-editor-wrapper .ProseMirror em     { font-style: italic; }
+.rich-editor-wrapper .ProseMirror u      { text-decoration: underline; }
+
+/* Styles prose pour la lecture (dangerouslySetInnerHTML) */
+.prose-content h1 { font-size: 1.5em; font-weight: 700; margin: 1em 0 0.4em; }
+.prose-content h2 { font-size: 1.25em; font-weight: 700; margin: 1em 0 0.4em; }
+.prose-content h3 { font-size: 1.1em; font-weight: 700; margin: 0.8em 0 0.3em; }
+.prose-content p  { margin: 0 0 0.7em; }
+.prose-content ul, .prose-content ol { margin: 0.4em 0 0.8em 1.5em; padding: 0; }
+.prose-content li { margin-bottom: 0.25em; }
+.prose-content blockquote {
+  border-left: 3px solid var(--brand-gold);
+  padding: 6px 14px;
+  margin: 0.8em 0;
+  color: var(--fg-secondary);
+  background: var(--bg-page);
+  border-radius: 0 6px 6px 0;
+}
+.prose-content strong { font-weight: 700; }
+.prose-content em     { font-style: italic; }
+.prose-content u      { text-decoration: underline; }

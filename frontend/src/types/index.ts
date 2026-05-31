@@ -99,6 +99,33 @@ export interface Commentaire {
   reponses: Commentaire[];
 }
 
+export interface Lecon {
+  id: number;
+  cours_id: number;
+  titre: string;
+  contenu: string | null;
+  ordre: number;
+  duree_minutes: number | null;
+  cree_le: string;
+  modifie_le: string;
+}
+
+export interface CoursSummary {
+  id: number;
+  titre: string;
+  description: string | null;
+  publie: boolean;
+  ordre: number;
+  nb_lecons: number;
+  cree_par: User | null;
+  cree_le: string;
+  modifie_le: string;
+}
+
+export interface CoursDetail extends CoursSummary {
+  lecons: Lecon[];
+}
+
 export interface CatalogueChant {
   id: number;
   numero: string;

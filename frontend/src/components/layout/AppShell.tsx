@@ -14,6 +14,8 @@ function getPageTitle(pathname: string): string {
   if (pathname === '/admin') return 'Administration';
   if (pathname === '/profil') return 'Mon profil';
   if (pathname === '/bibliotheque') return 'Bibliothèque';
+  if (pathname === '/formation') return 'Formation';
+  if (/^\/formation\/\d+/.test(pathname)) return 'Formation';
   return 'Mises en Commun';
 }
 
@@ -114,6 +116,9 @@ export default function AppShell() {
               <button className="sheet-item" onClick={() => { setSheetOpen(false); navigate("/bibliotheque"); }}>
                 <IcoBook /> Bibliothèque des chants
               </button>
+              <button className="sheet-item" onClick={() => { setSheetOpen(false); navigate("/formation"); }}>
+                <IcoGradCap /> Formation
+              </button>
               {isResp && (
                 <button className="sheet-item" onClick={() => navigate('/presence')}>
                   <IcoShield /> Présence
@@ -168,6 +173,9 @@ function IcoLogout() {
 }
 function IcoBook() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>;
+}
+function IcoGradCap() {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>;
 }
 function IcoPencil() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
