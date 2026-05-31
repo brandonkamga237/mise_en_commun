@@ -242,8 +242,13 @@ export default function PresencePage() {
                       }}>
                         <Avatar nom={u.nom} photoUrl={u.photo_url} size={32} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {u.nom}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {u.prenom ? `${u.prenom} ${u.nom}` : u.nom}
+                            </span>
+                            {u.role === 'responsable' && (
+                              <span title="Responsable" style={{ fontSize: 13, lineHeight: 1, color: '#C9952A', flexShrink: 0 }}>★</span>
+                            )}
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--fg-muted)', textTransform: 'capitalize' }}>{u.role}</div>
                         </div>
@@ -346,7 +351,12 @@ export default function PresencePage() {
                       <td style={{ padding: '10px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Avatar nom={s.user.nom} photoUrl={s.user.photo_url} size={24} />
-                          <span style={{ fontWeight: 500, color: 'var(--fg-primary)' }}>{s.user.nom}</span>
+                          <span style={{ fontWeight: 500, color: 'var(--fg-primary)' }}>
+                            {s.user.prenom ? `${s.user.prenom} ${s.user.nom}` : s.user.nom}
+                          </span>
+                          {s.user.role === 'responsable' && (
+                            <span title="Responsable" style={{ fontSize: 12, color: '#C9952A', lineHeight: 1 }}>★</span>
+                          )}
                         </div>
                       </td>
                       <td style={{ padding: '10px 8px', textAlign: 'center', color: '#15803D', fontWeight: 600 }}>{s.nb_present}</td>
