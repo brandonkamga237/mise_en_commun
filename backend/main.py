@@ -33,7 +33,6 @@ UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "/uploads")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
     os.makedirs(os.path.join(UPLOADS_DIR, "photos"), exist_ok=True)
     yield
 
