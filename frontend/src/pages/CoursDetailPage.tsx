@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getCoursDetail, updateCours, deleteCours,
-  createLecon, updateLecon, deleteLecon,
+  createLecon, updateLecon, deleteLecon, downloadCoursPdf,
 } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { Spinner } from '../components/ui/Spinner';
@@ -25,6 +25,19 @@ export default function CoursDetailPage() {
   const [coursTitre, setCoursTitre] = useState('');
   const [coursDesc, setCoursDesc] = useState('');
   const [savingCours, setSavingCours] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!cours) return;
+    setDownloading(true);
+    try {
+      await downloadCoursPdf(cours.id, cours.titre);
+    } catch {
+      toast.error('Téléchargement impossible.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Nouvelle leçon
   const [showNewLecon, setShowNewLecon] = useState(false);
@@ -163,36 +176,37 @@ export default function CoursDetailPage() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-                <h1 style={{ fontFamily: 'Lora, serif', fontSize: 20, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
                   {cours.titre}
                 </h1>
                 {!cours.publie && (
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 99, border: '1px solid #FCD34D', whiteSpace: 'nowrap' }}>
+                  <span className="chip" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', background: 'var(--warning-soft)', color: 'var(--warning-text)', borderColor: 'var(--warning-border)', whiteSpace: 'nowrap' }}>
                     Brouillon
                   </span>
                 )}
               </div>
               {cours.description && (
-                <p style={{ fontSize: 13, color: 'var(--fg-muted)', margin: 0 }}>{cours.description}</p>
+                <p style={{ fontSize: 13.5, color: 'var(--fg-muted)', margin: 0 }}>{cours.description}</p>
               )}
             </div>
-            {isResp && (
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={handleTogglePublie}
-                  title={cours.publie ? 'Dépublier' : 'Publier'}
-                >
-                  {cours.publie ? '● Publié' : '○ Publier'}
-                </button>
-                <button className="btn btn-secondary btn-sm" onClick={() => { setEditingCours(true); setCoursTitre(cours.titre); setCoursDesc(cours.description ?? ''); }}>
-                  Modifier
-                </button>
-                <button className="btn btn-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }} onClick={handleDeleteCours}>
-                  Supprimer
-                </button>
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+              <button className="btn btn-primary btn-sm press" onClick={handleDownload} disabled={downloading} title="Télécharger le cours en PDF">
+                {downloading ? <Spinner size={12} /> : <><IcoDownload /> PDF</>}
+              </button>
+              {isResp && (
+                <>
+                  <button className="btn btn-secondary btn-sm press" onClick={handleTogglePublie} title={cours.publie ? 'Dépublier' : 'Publier'}>
+                    {cours.publie ? '● Publié' : '○ Publier'}
+                  </button>
+                  <button className="btn btn-secondary btn-sm press" onClick={() => { setEditingCours(true); setCoursTitre(cours.titre); setCoursDesc(cours.description ?? ''); }}>
+                    Modifier
+                  </button>
+                  <button className="btn btn-secondary btn-sm press" style={{ color: 'var(--danger)' }} onClick={handleDeleteCours}>
+                    Supprimer
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSaveCours} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -339,10 +353,10 @@ export default function CoursDetailPage() {
                       </>
                     ) : (
                       <>
-                        <button className="btn btn-secondary btn-sm" onClick={() => startEditLecon(selectedLecon)}>
+                        <button className="btn btn-secondary btn-sm press" onClick={() => startEditLecon(selectedLecon)}>
                           Modifier
                         </button>
-                        <button className="btn btn-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }} onClick={() => handleDeleteLecon(selectedLecon)}>
+                        <button className="btn btn-secondary btn-sm press" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteLecon(selectedLecon)}>
                           Supprimer
                         </button>
                       </>
@@ -380,4 +394,7 @@ export default function CoursDetailPage() {
 
 function IcoClock() {
   return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+}
+function IcoDownload() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 }

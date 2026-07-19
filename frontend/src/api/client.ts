@@ -219,3 +219,16 @@ export async function downloadPdf(preparationId: number, filename?: string): Pro
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
+
+export async function downloadCoursPdf(coursId: number, titre?: string): Promise<void> {
+  const res = await api.get(`/formations/cours/${coursId}/pdf`, { responseType: 'blob' });
+  const blob = new Blob([res.data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `formation-${(titre ?? String(coursId)).replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}

@@ -4,6 +4,7 @@ import { getPreparations, getHistorique, dupliquerPreparation, createPreparation
 import { useAuthStore } from '../store/auth';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Spinner } from '../components/ui/Spinner';
+import { Skeleton } from '../components/ui/Skeleton';
 import type { PreparationSummary } from '../types';
 import toast from 'react-hot-toast';
 
@@ -89,8 +90,15 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50dvh' }}>
-        <Spinner size={32} />
+      <div className="page-wrapper">
+        <div style={{ marginBottom: 20 }}>
+          <Skeleton w={180} h={26} r={10} />
+          <Skeleton w={130} h={13} style={{ marginTop: 8 }} />
+        </div>
+        <Skeleton h={120} r={13} style={{ marginBottom: 16 }} />
+        <Skeleton h={150} r={18} style={{ marginBottom: 12 }} />
+        <Skeleton h={90} r={13} style={{ marginBottom: 16 }} />
+        <Skeleton h={180} r={13} />
       </div>
     );
   }
@@ -128,7 +136,7 @@ export default function DashboardPage() {
 
       {/* Greeting */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 700, color: 'var(--fg-primary)', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--fg-primary)', margin: 0 }}>
           Bonjour{prenom ? `, ${prenom}` : ''}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 3 }}>
@@ -155,7 +163,7 @@ export default function DashboardPage() {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--fg-muted)', marginBottom: 3 }}>
               Prochain dimanche
             </div>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 16, fontWeight: 600, color: 'var(--fg-primary)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--fg-primary)' }}>
               {fmtLong(dimanche1)}
             </div>
           </div>
@@ -220,7 +228,7 @@ export default function DashboardPage() {
             <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
               Dimanche suivant
             </div>
-            <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--fg-secondary)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--fg-secondary)' }}>
               {fmtLong(dimanche2)}
             </div>
             <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 2 }}>

@@ -13,12 +13,13 @@ from models.user import User
 
 router = APIRouter(prefix="/preparations", tags=["pdf"])
 
-NAVY = "#1E2D4A"
-BLUE = "#2B4C7E"
-GOLD = "#C9952A"
-CREAM = "#F7F3EE"
+# Charte d'origine : bleu marine + or + beige.
+NAVY = "#1E2D4A"        # bandeau, titres, en-tête de tableau
+BLUE = "#2B4C7E"        # sous-titres
+GOLD = "#C9952A"        # filet d'accent
+CREAM = "#F7F3EE"       # fond alterné subtil
 WARM_WHITE = "#FDFAF7"
-STONE = "#E8E2D9"
+STONE = "#E8E2D9"       # filets
 MUTED = "#6B7280"
 GREEN = "#15803D"
 AMBER = "#D97706"
@@ -146,7 +147,7 @@ def generate_pdf(
                  spaceAfter=3, leading=20)
     h2_style = s("h2", fontName="Helvetica-Bold", fontSize=10.5, textColor=colors.HexColor(BLUE),
                  spaceBefore=12, spaceAfter=5, leading=14)
-    body_style = s("body", fontSize=10, leading=15, textColor=colors.HexColor(NAVY))
+    body_style = s("body", fontSize=10, leading=15, textColor=colors.HexColor("#1A1A18"))
     muted_style = s("muted", fontSize=8.5, textColor=colors.HexColor(MUTED), spaceAfter=8, leading=12)
     empty_style = s("empty", fontSize=9.5, textColor=colors.HexColor(MUTED), leading=14)
     motif_style = s("motif", fontSize=9, textColor=colors.HexColor("#92400E"), leading=13,

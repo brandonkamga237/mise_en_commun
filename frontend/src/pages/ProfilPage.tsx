@@ -65,7 +65,7 @@ export default function ProfilPage() {
   return (
     <div className="page-wrapper">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
           Mon profil
         </h1>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 4 }}>
@@ -199,10 +199,10 @@ export default function ProfilPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
+            <button type="button" className="btn btn-secondary press" onClick={() => navigate(-1)}>
               Annuler
             </button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button type="submit" className="btn btn-primary press" disabled={saving}>
               {saving ? <Spinner size={14} /> : 'Enregistrer'}
             </button>
           </div>

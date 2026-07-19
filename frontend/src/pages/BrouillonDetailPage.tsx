@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   getBrouillon, getCommentaires, updateBrouillon,
@@ -18,8 +18,8 @@ import { ETAPES_LABELS } from '../types';
 import toast from 'react-hot-toast';
 
 type TabId = 'chants' | 'liturgie' | 'lecon' | 'divers';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type Dialog =
-  | { type: 'soumettre' }
   | { type: 'valider'; autreOfficiel: BrouillonSummary | null; loading: boolean }
   | { type: 'revoquer' }
   | { type: 'supprimer' }
@@ -38,16 +38,17 @@ export default function BrouillonDetailPage() {
   const [commentaires, setCommentaires] = useState<Commentaire[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('chants');
-  const [editMode, setEditMode] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [acting, setActing] = useState(false);
   const [liturgieText, setLiturgieText] = useState('');
   const [leconText, setLeconText] = useState('');
   const [diversText, setDiversText] = useState('');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [acting, setActing] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [showRenvoi, setShowRenvoi] = useState(false);
   const [motifRenvoi, setMotifRenvoi] = useState('');
   const [envoiRenvoi, setEnvoiRenvoi] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -69,13 +70,27 @@ export default function BrouillonDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // useMemo doit être appelé avant tout early return (règle des hooks)
   const tabs = useMemo<{ id: TabId; label: string; count?: number }[]>(() => [
     { id: 'chants',   label: 'Chants',   count: brouillon?.chants.length ?? 0 },
     { id: 'liturgie', label: 'Liturgie' },
     { id: 'lecon',    label: 'Leçon' },
     { id: 'divers',   label: 'Divers' },
   ], [brouillon?.chants.length]);
+
+  // Auto-save debouncé, déclenché par les modifications de l'utilisateur.
+  const scheduleSave = useCallback((fields: { liturgie: string; lecon: string; divers: string }) => {
+    if (!brouillon) return;
+    setSaveStatus('saving');
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await updateBrouillon(brouillon.id, fields);
+        setSaveStatus('saved');
+      } catch {
+        setSaveStatus('error');
+      }
+    }, 800);
+  }, [brouillon]);
 
   if (loadError) {
     return (
@@ -108,16 +123,17 @@ export default function BrouillonDetailPage() {
   const isOwner = brouillon.auteur.id === user.id;
   const canEdit = brouillon.statut === 'officiel' ? isResp : (isOwner || isResp);
 
-  // ── Handlers ──────────────────────────────────────
+  const canDelete = (isOwner && brouillon.statut === 'en_revision') || (isAdmin && brouillon.statut !== 'officiel');
+  const canRevoquer = isResp && brouillon.statut === 'officiel';
+  const hasOverflow = canDelete || canRevoquer;
 
-  const handleSaveText = async () => {
-    setSaving(true);
-    try {
-      await updateBrouillon(brouillon.id, { liturgie: liturgieText, lecon: leconText, divers: diversText });
-      toast.success('Modifications enregistrées.');
-      setEditMode(false);
-      load();
-    } catch {} finally { setSaving(false); }
+  // ── Handlers ──────────────────────────────────────
+  const onChangeText = (field: 'liturgie' | 'lecon' | 'divers', value: string) => {
+    const next = { liturgie: liturgieText, lecon: leconText, divers: diversText, [field]: value };
+    if (field === 'liturgie') setLiturgieText(value);
+    if (field === 'lecon') setLeconText(value);
+    if (field === 'divers') setDiversText(value);
+    scheduleSave(next);
   };
 
   const openValider = async () => {
@@ -184,20 +200,13 @@ export default function BrouillonDetailPage() {
     } catch {}
   };
 
-  const cancelEdit = () => {
-    setEditMode(false);
-    setLiturgieText(brouillon.liturgie);
-    setLeconText(brouillon.lecon);
-    setDiversText(brouillon.divers);
-  };
-
   const bannerBg: Record<string, string> = {
-    cree: '#F9FAFB', en_revision: '#FEF2F2',
-    candidat_final: '#FFFBEB', officiel: '#F0FDF4', archive: '#F9FAFB',
+    cree: 'var(--surface-2)', en_revision: 'var(--danger-soft)',
+    candidat_final: 'var(--warning-soft)', officiel: 'var(--success-soft)', archive: 'var(--surface-2)',
   };
   const bannerBorder: Record<string, string> = {
-    cree: '#E5E7EB', en_revision: '#FECACA',
-    candidat_final: '#FDE68A', officiel: '#BBF7D0', archive: '#E5E7EB',
+    cree: 'var(--border)', en_revision: 'var(--danger-border)',
+    candidat_final: 'var(--warning-border)', officiel: 'var(--success-border)', archive: 'var(--border)',
   };
 
   return (
@@ -205,29 +214,25 @@ export default function BrouillonDetailPage() {
 
       {/* ── Sticky header ─────────────────────────── */}
       <div className="sticky-below-topbar" style={{
-        background: bannerBg[brouillon.statut] ?? '#F9FAFB',
-        borderBottom: `2px solid ${bannerBorder[brouillon.statut] ?? '#E5E7EB'}`,
+        background: bannerBg[brouillon.statut] ?? 'var(--surface-2)',
+        borderBottom: `2px solid ${bannerBorder[brouillon.statut] ?? 'var(--border)'}`,
       }}>
-        {/* Row 1 : auteur + statut + supprimer */}
+        {/* Row 1 : auteur + statut + save status + overflow */}
         <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Avatar nom={brouillon.auteur.nom} size={26} />
+          <Avatar nom={brouillon.auteur.nom} photoUrl={brouillon.auteur.photo_url} size={28} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-primary)' }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg-primary)' }}>
               {brouillon.auteur.nom}
             </span>
             <span style={{ fontSize: 11, color: 'var(--fg-muted)', marginLeft: 6 }}>
               · <TimeAgo date={brouillon.modifie_le} />
             </span>
           </div>
+          {canEdit && saveStatus !== 'idle' && <SaveStatusIndicator status={saveStatus} />}
           <StatusPill statut={brouillon.statut} />
-          {((isOwner && brouillon.statut === 'en_revision') || (isAdmin && brouillon.statut !== 'officiel')) && (
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ color: '#DC2626', flexShrink: 0, padding: '4px 6px' }}
-              onClick={() => setDialog({ type: 'supprimer' })}
-              aria-label="Supprimer cette préparation"
-            >
-              <IcoTrash />
+          {hasOverflow && (
+            <button className="icon-btn" onClick={() => setMenuOpen(true)} aria-label="Plus d'actions">
+              <IcoDots />
             </button>
           )}
         </div>
@@ -235,60 +240,35 @@ export default function BrouillonDetailPage() {
         {/* Row 1b : Status stepper */}
         <StatusStepper statut={brouillon.statut} />
 
-        {/* Row 2 : actions scrollables */}
+        {/* Row 2 : actions primaires */}
         <div style={{
           display: 'flex', gap: 6, padding: '0 16px 10px',
           overflowX: 'auto', flexWrap: 'nowrap', scrollbarWidth: 'none',
         }}>
           <button
-            className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }}
+            className="btn btn-secondary btn-sm press" style={{ flexShrink: 0 }}
             aria-label="Télécharger PDF"
             onClick={() => downloadPdf(brouillon.id)}
           >
             <IcoPdf /> PDF
           </button>
 
-          {canEdit && !editMode && (
-            <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={() => setEditMode(true)}>
-              <IcoPencil /> Modifier
-            </button>
-          )}
-          {editMode && (
-            <>
-              <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={handleSaveText} disabled={saving}>
-                {saving ? <Spinner size={12} /> : <><IcoCheck /> Enregistrer</>}
-              </button>
-              <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={cancelEdit}>Annuler</button>
-            </>
-          )}
-
           {isOwner && brouillon.statut === 'en_revision' && (
-            <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={handleToggleVisibilite}>
+            <button className="btn btn-secondary btn-sm press" style={{ flexShrink: 0 }} onClick={handleToggleVisibilite}>
               {brouillon.visible ? <><IcoEyeOff /> Masquer</> : <><IcoEye /> Soumettre</>}
             </button>
           )}
 
           {isResp && brouillon.statut === 'en_revision' && brouillon.visible && (
             <>
-              <button className="btn btn-primary btn-sm" style={{ flexShrink: 0 }} onClick={openValider}>
+              <button className="btn btn-primary btn-sm press" style={{ flexShrink: 0 }} onClick={openValider}>
                 <IcoCheck /> Valider
               </button>
-              <button className="btn btn-secondary btn-sm" style={{ color: '#DC2626', flexShrink: 0 }} onClick={() => setShowRenvoi(true)}>
-                Retour
+              <button className="btn btn-secondary btn-sm press" style={{ color: 'var(--danger)', flexShrink: 0 }} onClick={() => setShowRenvoi(true)}>
+                <IcoUndo /> Retour
               </button>
             </>
           )}
-
-          {isResp && brouillon.statut === 'officiel' && (
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ color: '#DC2626', flexShrink: 0 }}
-              onClick={() => setDialog({ type: 'revoquer' })}
-            >
-              <IcoUndo /> Révoquer
-            </button>
-          )}
-
         </div>
 
         {/* Tab bar */}
@@ -304,7 +284,7 @@ export default function BrouillonDetailPage() {
               {t.label}
               {t.count != null && t.count > 0 && (
                 <span style={{
-                  background: activeTab === t.id ? 'var(--brand-navy)' : 'var(--border-medium)',
+                  background: activeTab === t.id ? 'var(--primary)' : 'var(--border-strong)',
                   color: activeTab === t.id ? '#fff' : 'var(--fg-secondary)',
                   fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99,
                 }}>
@@ -317,35 +297,33 @@ export default function BrouillonDetailPage() {
       </div>
 
       {/* ── Content ─────────────────────────────────── */}
-      <div style={{ padding: '16px 16px 32px', maxWidth: 840 }}>
+      <div style={{ padding: '16px 16px 40px', maxWidth: 840, margin: '0 auto' }}>
 
-        {/* Bannière brouillon privé */}
         {!brouillon.visible && (
           <div style={{
-            background: '#F3F4F6', border: '1px solid #E5E7EB',
-            borderRadius: 8, padding: '8px 14px', marginBottom: 14,
+            background: 'var(--surface-sunken)', border: '1px solid var(--border)',
+            borderRadius: 'var(--r-sm)', padding: '10px 14px', marginBottom: 14,
             display: 'flex', gap: 8, alignItems: 'center',
           }}>
             <IcoEyeOff />
-            <span style={{ fontSize: 13, color: '#6B7280' }}>
+            <span style={{ fontSize: 13, color: 'var(--fg-secondary)' }}>
               Cette préparation est <strong>privée</strong> — seul toi peux la voir.
             </span>
           </div>
         )}
 
-        {/* Bannière motif révision */}
         {brouillon.motif_revision && (
           <div style={{
-            background: '#FEF3C7', border: '1px solid #FCD34D',
-            borderRadius: 8, padding: '10px 14px', marginBottom: 14,
+            background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+            borderRadius: 'var(--r-sm)', padding: '12px 14px', marginBottom: 14,
           }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>↩</span>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', marginBottom: 2 }}>
-                  Demande de modification — renvoyé en révision par un responsable
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--warning-text)', marginBottom: 2 }}>
+                  Demande de modification — renvoyé en révision
                 </div>
-                <div style={{ fontSize: 13, color: '#92400E', lineHeight: 1.55 }}>
+                <div style={{ fontSize: 13.5, color: 'var(--warning-text)', lineHeight: 1.55 }}>
                   {brouillon.motif_revision}
                 </div>
               </div>
@@ -356,9 +334,7 @@ export default function BrouillonDetailPage() {
         {/* ── Tab: Chants ── */}
         {activeTab === 'chants' && (
           <div>
-            <h2 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 14px' }}>
-              Programme des chants
-            </h2>
+            <SectionTitle>Programme des chants</SectionTitle>
             {canEdit ? (
               <ChantsList brouillon={brouillon} canEdit={canEdit} onRefresh={load} />
             ) : brouillon.chants.length > 0 ? (
@@ -366,20 +342,20 @@ export default function BrouillonDetailPage() {
                 {[...brouillon.chants].sort((a, b) => a.ordre - b.ordre).map((chant, i) => (
                   <div key={chant.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 0',
+                    padding: '11px 0',
                     borderBottom: i < brouillon.chants.length - 1 ? '1px solid var(--border-subtle)' : 'none',
                   }}>
                     <span style={{
-                      width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                      background: 'var(--bg-page)', border: '1px solid var(--border-medium)',
+                      width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                      background: 'var(--surface-sunken)', border: '1px solid var(--border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)',
                     }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 500, color: 'var(--fg-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {chant.titre}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>
+                      <div style={{ fontSize: 11.5, color: 'var(--fg-muted)' }}>
                         {ETAPES_LABELS[chant.etape] ?? chant.etape}
                       </div>
                     </div>
@@ -400,75 +376,86 @@ export default function BrouillonDetailPage() {
         {/* ── Tab: Liturgie ── */}
         {activeTab === 'liturgie' && (
           <div>
-            <h2 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 14px' }}>
-              Liturgie
-            </h2>
-            {editMode ? (
-              <textarea className="field" style={{ minHeight: 200, fontSize: 14, lineHeight: 1.7 }}
-                value={liturgieText} onChange={e => setLiturgieText(e.target.value)}
+            <SectionTitle>Liturgie</SectionTitle>
+            {canEdit ? (
+              <textarea className="field" style={{ minHeight: 220, fontSize: 14.5, lineHeight: 1.7 }}
+                value={liturgieText} onChange={e => onChangeText('liturgie', e.target.value)}
                 placeholder="Déroulé pédagogique, prières, transitions…" />
             ) : (
               <ReadBlock text={brouillon.liturgie} placeholder="Non renseignée." />
             )}
             <CommentThread brouillonId={brouillon.id} cibleType="brouillon_bloc_liturgie" cibleId={brouillon.id}
               commentaires={commentaires} auteurBrouillonId={brouillon.auteur.id} onRefresh={load} label="Commenter" />
-            {editMode && <SaveBar onSave={handleSaveText} onCancel={cancelEdit} saving={saving} />}
           </div>
         )}
 
         {/* ── Tab: Leçon ── */}
         {activeTab === 'lecon' && (
           <div>
-            <h2 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 14px' }}>
-              Leçon
-            </h2>
-            {editMode ? (
-              <textarea className="field" style={{ minHeight: 200, fontSize: 14, lineHeight: 1.7 }}
-                value={leconText} onChange={e => setLeconText(e.target.value)}
+            <SectionTitle>Leçon</SectionTitle>
+            {canEdit ? (
+              <textarea className="field" style={{ minHeight: 220, fontSize: 14.5, lineHeight: 1.7 }}
+                value={leconText} onChange={e => onChangeText('lecon', e.target.value)}
                 placeholder="Contenu pédagogique pour les enfants…" />
             ) : (
               <ReadBlock text={brouillon.lecon} placeholder="Non renseignée." />
             )}
             <CommentThread brouillonId={brouillon.id} cibleType="brouillon_bloc_lecon" cibleId={brouillon.id}
               commentaires={commentaires} auteurBrouillonId={brouillon.auteur.id} onRefresh={load} label="Commenter" />
-            {editMode && <SaveBar onSave={handleSaveText} onCancel={cancelEdit} saving={saving} />}
           </div>
         )}
 
         {/* ── Tab: Divers ── */}
         {activeTab === 'divers' && (
           <div>
-            <h2 style={{ fontFamily: 'Lora, serif', fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 14px' }}>
-              Informations et divers
-            </h2>
-            {editMode ? (
-              <textarea className="field" style={{ minHeight: 140, fontSize: 14, lineHeight: 1.7 }}
-                value={diversText} onChange={e => setDiversText(e.target.value)}
+            <SectionTitle>Informations et divers</SectionTitle>
+            {canEdit ? (
+              <textarea className="field" style={{ minHeight: 160, fontSize: 14.5, lineHeight: 1.7 }}
+                value={diversText} onChange={e => onChangeText('divers', e.target.value)}
                 placeholder="Annonces, matériel nécessaire, anniversaires…" />
             ) : (
               <ReadBlock text={brouillon.divers} placeholder="Rien à signaler." />
             )}
             <CommentThread brouillonId={brouillon.id} cibleType="brouillon_bloc_divers" cibleId={brouillon.id}
               commentaires={commentaires} auteurBrouillonId={brouillon.auteur.id} onRefresh={load} label="Commenter" />
-            {editMode && <SaveBar onSave={handleSaveText} onCancel={cancelEdit} saving={saving} />}
           </div>
         )}
 
-        {/* Pied de page : date + validation */}
+        {/* Pied de page */}
         <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
           <p style={{ fontSize: 12, color: 'var(--fg-muted)', margin: 0, lineHeight: 1.7 }}>
             Dimanche {fmtDate(brouillon.date_dimanche + 'T00:00:00')}
             {brouillon.validateur && (
               <>
                 {' · '}Validé par <strong>{brouillon.validateur.nom}</strong>
-                {brouillon.valide_le && (
-                  <> le {fmtDate(brouillon.valide_le)}</>
-                )}
+                {brouillon.valide_le && <> le {fmtDate(brouillon.valide_le)}</>}
               </>
             )}
           </p>
         </div>
       </div>
+
+      {/* ── Overflow menu (bottom-sheet) ─────────────── */}
+      {menuOpen && (
+        <>
+          <div className="overlay" style={{ zIndex: 60 }} onClick={() => setMenuOpen(false)} />
+          <div className="bottom-sheet" style={{ zIndex: 70 }}>
+            <div className="bottom-sheet-handle" />
+            <div style={{ padding: '10px 0' }}>
+              {canRevoquer && (
+                <button className="sheet-item" onClick={() => { setMenuOpen(false); setDialog({ type: 'revoquer' }); }}>
+                  <IcoUndo /> Révoquer la désignation officielle
+                </button>
+              )}
+              {canDelete && (
+                <button className="sheet-item danger" onClick={() => { setMenuOpen(false); setDialog({ type: 'supprimer' }); }}>
+                  <IcoTrash /> Supprimer la préparation
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Dialogs ──────────────────────────────────── */}
       {dialog?.type === 'valider' && (
@@ -483,7 +470,7 @@ export default function BrouillonDetailPage() {
               <>
                 Cette préparation sera désignée comme <strong>officielle</strong> pour ce dimanche.
                 <br /><br />
-                <span style={{ color: '#991B1B', background: '#FEE2E2', padding: '6px 10px', borderRadius: 6, display: 'block', fontSize: 13 }}>
+                <span style={{ color: 'var(--danger-text)', background: 'var(--danger-soft)', padding: '8px 12px', borderRadius: 8, display: 'block', fontSize: 13 }}>
                   ⚠️ La préparation de <strong>{dialog.autreOfficiel.auteur.nom}</strong> (actuellement officielle) sera <strong>définitivement supprimée</strong>.
                 </span>
               </>
@@ -502,7 +489,7 @@ export default function BrouillonDetailPage() {
       {dialog?.type === 'revoquer' && (
         <ConfirmModal
           title="Révoquer la désignation officielle"
-          message={<>Cette préparation ne sera <strong>plus officielle</strong> pour ce dimanche. Elle repassera en attente de validation. Cette action est irréversible si le dimanche est passé.</>}
+          message={<>Cette préparation ne sera <strong>plus officielle</strong> pour ce dimanche. Elle repassera en attente de validation.</>}
           confirmLabel="Révoquer"
           variant="danger"
           loading={acting}
@@ -527,7 +514,7 @@ export default function BrouillonDetailPage() {
         <>
           <div className="overlay" onClick={() => { if (!envoiRenvoi) setShowRenvoi(false); }} />
           <div className="modal" style={{ maxWidth: 460 }}>
-            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 6 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 6 }}>
               Envoyer un retour
             </h3>
             <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16, lineHeight: 1.6 }}>
@@ -553,30 +540,34 @@ export default function BrouillonDetailPage() {
   );
 }
 
-function SaveBar({ onSave, onCancel, saving }: { onSave: () => void; onCancel: () => void; saving: boolean }) {
+function SaveStatusIndicator({ status }: { status: SaveStatus }) {
+  const label = status === 'saving' ? 'Enregistrement…' : status === 'saved' ? 'Enregistré' : 'Non enregistré';
   return (
-    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 16 }}>
-      <button className="btn btn-secondary" onClick={onCancel} disabled={saving}>Annuler</button>
-      <button className="btn btn-primary" onClick={onSave} disabled={saving}>
-        {saving ? <Spinner size={14} /> : 'Enregistrer'}
-      </button>
-    </div>
+    <span className={`save-status ${status}`} style={{ flexShrink: 0 }}>
+      {status === 'saving' ? <Spinner size={11} /> : status === 'saved' ? <IcoCheck /> : <span className="dot" />}
+      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+    </span>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 14px' }}>
+      {children}
+    </h2>
   );
 }
 
 function ReadBlock({ text, placeholder }: { text: string; placeholder: string }) {
   if (!text?.trim()) return <p style={{ fontSize: 13, color: 'var(--fg-muted)', fontStyle: 'italic', margin: 0 }}>{placeholder}</p>;
-  return <p style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--fg-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>{text}</p>;
+  return <p style={{ fontSize: 14.5, lineHeight: 1.8, color: 'var(--fg-primary)', whiteSpace: 'pre-wrap', margin: 0 }}>{text}</p>;
 }
 
-function IcoPencil() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
-}
 function IcoCheck() {
   return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
 }
 function IcoTrash() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>;
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>;
 }
 function IcoPdf() {
   return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>;
@@ -586,6 +577,9 @@ function IcoEye() {
 }
 function IcoEyeOff() {
   return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
+}
+function IcoDots() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>;
 }
 function IcoAlertCircle() {
   return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
@@ -598,27 +592,24 @@ function StatusStepper({ statut }: { statut: string }) {
   const isOfficiel = statut === 'officiel';
   return (
     <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px 8px', gap: 0 }}>
-      {/* Étape 1 : En révision */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
         <div style={{
           width: 10, height: 10, borderRadius: '50%',
-          background: isOfficiel ? '#16A34A' : 'var(--brand-navy)',
-          boxShadow: !isOfficiel ? '0 0 0 3px rgba(43,76,126,0.15)' : 'none',
+          background: isOfficiel ? 'var(--success)' : 'var(--primary)',
+          boxShadow: !isOfficiel ? '0 0 0 3px var(--ring)' : 'none',
         }} />
-        <span style={{ fontSize: 10, fontWeight: !isOfficiel ? 700 : 400, color: !isOfficiel ? 'var(--brand-navy)' : 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 10, fontWeight: !isOfficiel ? 700 : 400, color: !isOfficiel ? 'var(--primary)' : 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
           En révision
         </span>
       </div>
-      {/* Ligne */}
-      <div style={{ flex: 1, height: 2, background: isOfficiel ? '#16A34A' : 'var(--border-medium)', margin: '-10px 6px 0' }} />
-      {/* Étape 2 : Validé */}
+      <div style={{ flex: 1, height: 2, background: isOfficiel ? 'var(--success)' : 'var(--border-medium)', margin: '-10px 6px 0' }} />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
         <div style={{
           width: 10, height: 10, borderRadius: '50%',
-          background: isOfficiel ? '#16A34A' : 'var(--border-medium)',
+          background: isOfficiel ? 'var(--success)' : 'var(--border-medium)',
           boxShadow: isOfficiel ? '0 0 0 3px rgba(22,163,74,0.15)' : 'none',
         }} />
-        <span style={{ fontSize: 10, fontWeight: isOfficiel ? 700 : 400, color: isOfficiel ? '#16A34A' : 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 10, fontWeight: isOfficiel ? 700 : 400, color: isOfficiel ? 'var(--success)' : 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
           Validé
         </span>
       </div>

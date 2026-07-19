@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuthStore } from '../../store/auth';
@@ -6,39 +5,37 @@ import { Avatar } from '../ui/Avatar';
 
 function getPageTitle(pathname: string): string {
   if (pathname === '/tableau-de-bord') return 'Accueil';
-  if (pathname === '/mes-preparations') return 'Mes préparations';
+  if (pathname === '/mes-preparations') return 'Préparations';
   if (/^\/preparations\/\d+/.test(pathname)) return 'Préparation';
-  if (pathname === '/preparations') return 'Équipe';
+  if (pathname === '/preparations') return 'Préparations';
   if (pathname === '/historique') return 'Historique';
   if (pathname === '/presence') return 'Présence';
   if (pathname === '/admin') return 'Administration';
   if (pathname === '/profil') return 'Mon profil';
   if (pathname === '/bibliotheque') return 'Bibliothèque';
-  if (pathname === '/formation') return 'Formation';
+  if (pathname === '/menu') return 'Menu';
   if (/^\/formation\/\d+/.test(pathname)) return 'Formation';
+  if (pathname === '/formation') return 'Formation';
   return 'Mises en Commun';
 }
 
+const MENU_PATHS = ['/menu', '/historique', '/presence', '/admin', '/profil'];
+
 export default function AppShell() {
-  const [sheetOpen, setSheetOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
-  const isResp = user?.role === 'responsable' || user?.role === 'admin';
-  const isAdmin = user?.role === 'admin';
+  const { user } = useAuthStore();
   const path = location.pathname;
-  const isDetailPage = /^\/preparations\/\d+/.test(path);
+  const isDetailPage = /^\/preparations\/\d+/.test(path) || /^\/formation\/\d+/.test(path);
   const pageTitle = getPageTitle(path);
 
-  useEffect(() => { setSheetOpen(false); }, [path]);
-
   const tabs = [
-    { to: '/tableau-de-bord', label: 'Accueil',    icon: <IcoHome /> },
-    { to: '/mes-preparations',  label: 'Préparat.', icon: <IcoFile /> },
-    { to: '/preparations',      label: 'Équipe',    icon: <IcoPeople /> },
+    { to: '/tableau-de-bord', label: 'Accueil',      icon: <IcoHome />,    match: (p: string) => p === '/tableau-de-bord' },
+    { to: '/mes-preparations', label: 'Préparations', icon: <IcoFile />,    match: (p: string) => p.startsWith('/preparations') || p.startsWith('/mes-preparations') },
+    { to: '/formation',       label: 'Formation',     icon: <IcoGradCap />, match: (p: string) => p.startsWith('/formation') },
+    { to: '/bibliotheque',    label: 'Biblio',        icon: <IcoBook />,    match: (p: string) => p.startsWith('/bibliotheque') },
+    { to: '/menu',            label: 'Menu',          icon: <IcoMenu />,    match: (p: string) => MENU_PATHS.some(m => p.startsWith(m)) },
   ];
-
-  const isActive = (to: string) => path === to || (to !== '/preparations' && path.startsWith(to + '/'));
 
   return (
     <div className="app-shell">
@@ -48,14 +45,24 @@ export default function AppShell() {
         {/* Mobile topbar */}
         <div className="mobile-topbar">
           {isDetailPage ? (
-            <button className="topbar-btn" onClick={() => navigate(-1)} aria-label="Retour à la page précédente">
+            <button className="topbar-btn press" onClick={() => navigate(-1)} aria-label="Retour à la page précédente">
               <IcoBack />
             </button>
           ) : (
-            <div style={{ width: 40 }} />
+            <div style={{
+              width: 32, height: 32, marginLeft: 4, borderRadius: 9, flexShrink: 0,
+              background: 'linear-gradient(150deg, var(--primary), var(--primary-active))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 3px 9px rgba(30,45,74,0.28)',
+            }} aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+              </svg>
+            </div>
           )}
           <span className="topbar-title">{pageTitle}</span>
-          <button className="topbar-btn" onClick={() => setSheetOpen(true)} aria-label="Ouvrir mon profil">
+          <button className="topbar-btn press" onClick={() => navigate('/menu')} aria-label="Ouvrir le menu">
             {user ? <Avatar nom={user.nom} photoUrl={user.photo_url} size={28} /> : <IcoUser />}
           </button>
         </div>
@@ -64,82 +71,23 @@ export default function AppShell() {
 
         {/* Bottom navigation */}
         <nav className="bottom-nav" aria-label="Navigation principale">
-          {tabs.map(tab => (
-            <button
-              key={tab.to}
-              className={`bottom-nav-item${isActive(tab.to) ? ' active' : ''}`}
-              onClick={() => navigate(tab.to)}
-              aria-label={tab.label}
-              aria-current={isActive(tab.to) ? 'page' : undefined}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-          <button
-            className={`bottom-nav-item${sheetOpen ? ' active' : ''}`}
-            onClick={() => setSheetOpen(o => !o)}
-            aria-label="Mon profil"
-            aria-expanded={sheetOpen}
-          >
-            <IcoUser />
-            <span>Moi</span>
-          </button>
+          {tabs.map(tab => {
+            const active = tab.match(path);
+            return (
+              <button
+                key={tab.to}
+                className={`bottom-nav-item${active ? ' active' : ''}`}
+                onClick={() => navigate(tab.to)}
+                aria-label={tab.label}
+                aria-current={active ? 'page' : undefined}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </nav>
       </div>
-
-      {/* Profile bottom sheet */}
-      {sheetOpen && (
-        <>
-          <div className="overlay" style={{ zIndex: 60 }} onClick={() => setSheetOpen(false)} />
-          <div className="bottom-sheet" style={{ zIndex: 70 }}>
-            <div className="bottom-sheet-handle" />
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '16px 20px 14px', marginTop: 8,
-              borderBottom: '1px solid var(--border-subtle)',
-            }}>
-              {user && <Avatar nom={user.nom} photoUrl={user.photo_url} size={42} />}
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-primary)' }}>
-                  {user?.prenom ? `${user.prenom} ${user.nom}` : user?.nom}
-                </div>
-                <div style={{ fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.04em', color: 'var(--fg-muted)', marginTop: 1 }}>
-                  {user?.matricule ?? user?.email}
-                </div>
-              </div>
-            </div>
-            <div style={{ padding: '6px 0' }}>
-              <button className="sheet-item" onClick={() => navigate("/historique")}>
-                <IcoClock /> Historique
-              </button>
-              <button className="sheet-item" onClick={() => { setSheetOpen(false); navigate("/bibliotheque"); }}>
-                <IcoBook /> Bibliothèque des chants
-              </button>
-              <button className="sheet-item" onClick={() => { setSheetOpen(false); navigate("/formation"); }}>
-                <IcoGradCap /> Formation
-              </button>
-              {isResp && (
-                <button className="sheet-item" onClick={() => navigate('/presence')}>
-                  <IcoShield /> Présence
-                </button>
-              )}
-              {isAdmin && (
-                <button className="sheet-item" onClick={() => navigate('/admin')}>
-                  <IcoSettings /> Administration
-                </button>
-              )}
-              <button className="sheet-item" onClick={() => { setSheetOpen(false); navigate('/profil'); }}>
-                <IcoPencil /> Modifier mon profil
-              </button>
-              <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 20px' }} />
-              <button className="sheet-item danger" onClick={() => { logout(); navigate('/connexion'); }}>
-                <IcoLogout /> Se déconnecter
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -153,30 +101,15 @@ function IcoHome() {
 function IcoFile() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
 }
-function IcoPeople() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
+function IcoGradCap() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>;
 }
-function IcoClock() {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14.5"/></svg>;
+function IcoBook() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>;
+}
+function IcoMenu() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>;
 }
 function IcoUser() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-}
-function IcoShield() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
-}
-function IcoSettings() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>;
-}
-function IcoLogout() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
-}
-function IcoBook() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>;
-}
-function IcoGradCap() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/></svg>;
-}
-function IcoPencil() {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
 }

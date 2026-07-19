@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCours, createCours } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { Spinner } from '../components/ui/Spinner';
+import { Skeleton } from '../components/ui/Skeleton';
 import toast from 'react-hot-toast';
 import type { CoursSummary } from '../types';
 
@@ -52,7 +53,7 @@ export default function FormationPage() {
     <div className="page-wrapper">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
             Formation
           </h1>
           <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 4 }}>
@@ -67,8 +68,14 @@ export default function FormationPage() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-          <Spinner size={32} />
+        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="card">
+              <Skeleton w="60%" h={15} />
+              <Skeleton w="90%" h={12} style={{ marginTop: 10 }} />
+              <Skeleton w="40%" h={11} style={{ marginTop: 12 }} />
+            </div>
+          ))}
         </div>
       ) : cours.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 48 }}>
@@ -112,7 +119,7 @@ export default function FormationPage() {
             background: 'var(--bg-card)', borderRadius: 12, padding: '24px 24px 20px',
             boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
           }}>
-            <h3 style={{ fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 16px' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--fg-primary)', margin: '0 0 16px' }}>
               Nouveau cours
             </h3>
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -159,18 +166,15 @@ export default function FormationPage() {
 function CoursCard({ cours, onClick }: { cours: CoursSummary; onClick: () => void }) {
   return (
     <div
-      className="card"
+      className="card card-interactive press"
       onClick={onClick}
-      style={{ cursor: 'pointer', padding: '16px 18px', transition: 'box-shadow 0.15s', position: 'relative' }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = '')}
+      style={{ padding: '16px 18px', position: 'relative' }}
     >
       {!cours.publie && (
-        <span style={{
+        <span className="chip" style={{
           position: 'absolute', top: 12, right: 12,
-          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-          background: '#FEF3C7', color: '#92400E', padding: '2px 7px', borderRadius: 99,
-          border: '1px solid #FCD34D',
+          fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+          background: 'var(--warning-soft)', color: 'var(--warning-text)', borderColor: 'var(--warning-border)',
         }}>
           Brouillon
         </span>

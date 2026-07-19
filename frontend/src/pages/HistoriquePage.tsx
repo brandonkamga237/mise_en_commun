@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getHistorique, downloadPdf } from '../api/client';
 import { StatusPill } from '../components/ui/StatusPill';
 import { Spinner } from '../components/ui/Spinner';
+import { SkeletonList } from '../components/ui/Skeleton';
 import type { PreparationSummary } from '../types';
 
 function formatDateFr(dateStr: string): string {
@@ -59,7 +60,7 @@ export default function HistoriquePage() {
   return (
     <div className="page-wrapper">
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Lora, serif', fontSize: 24, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
           Historique
         </h1>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 4 }}>
@@ -97,9 +98,7 @@ export default function HistoriquePage() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-          <Spinner size={32} />
-        </div>
+        <SkeletonList count={4} />
       ) : filtered.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 40 }}>
           <p style={{ fontSize: 15, color: 'var(--fg-muted)' }}>
@@ -122,13 +121,13 @@ export default function HistoriquePage() {
             {grouped[Number(annee)].map(b => (
               <div
                 key={b.id}
-                className="card"
-                style={{ marginBottom: 10, cursor: 'pointer' }}
+                className="card card-interactive press"
+                style={{ marginBottom: 10 }}
                 onClick={() => navigate(`/preparations/${b.id}`)}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 2 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 2 }}>
                       {formatDateFr(b.date_dimanche)}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginBottom: b.apercu_lecon ? 4 : 0 }}>

@@ -4,25 +4,66 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ["Lora", "Georgia", "serif"],
-        body: ["Source Sans 3", "Helvetica Neue", "Arial", "sans-serif"],
+        display: ["Fraunces", "Lora", "Georgia", "serif"],
+        body: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
       },
       colors: {
-        navy:    "#1E2D4A",
-        "navy-light": "#2B3F62",
-        blue:    "#2B4C7E",
-        gold:    "#C9952A",
-        "gold-pale": "#F5E9C8",
-        cream:   "#F7F3EE",
-        "warm-white": "#FDFAF7",
-        stone:   "#E8E2D9",
-        "stone-dark": "#D1C9BE",
+        // Semantic tokens (mirror the CSS custom properties in index.css)
+        primary: {
+          DEFAULT: "var(--primary)",
+          hover: "var(--primary-hover)",
+          soft: "var(--primary-soft)",
+          border: "var(--primary-border)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          hover: "var(--accent-hover)",
+          soft: "var(--accent-soft)",
+        },
+        surface: {
+          DEFAULT: "var(--surface)",
+          2: "var(--surface-2)",
+          sunken: "var(--surface-sunken)",
+        },
+        ink: {
+          strong: "var(--text-strong)",
+          DEFAULT: "var(--text)",
+          muted: "var(--text-muted)",
+          faint: "var(--text-faint)",
+        },
+        line: {
+          DEFAULT: "var(--border)",
+          strong: "var(--border-strong)",
+        },
+        // Legacy names (still referenced in a few spots)
+        navy: "var(--primary)",
+        "navy-light": "var(--primary-hover)",
+        blue: "var(--primary)",
+        gold: "var(--accent)",
+        "gold-pale": "var(--accent-soft)",
+        cream: "var(--surface-2)",
+        "warm-white": "var(--surface)",
+        stone: "var(--surface-sunken)",
+        "stone-dark": "var(--border-strong)",
+      },
+      boxShadow: {
+        xs: "var(--shadow-xs)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
+      },
+      borderRadius: {
+        sm: "var(--r-sm)",
+        md: "var(--r-md)",
+        lg: "var(--r-lg)",
+        xl: "var(--r-xl)",
       },
       maxWidth: {
         content: "720px",
       },
       width: {
-        sidebar: "240px",
+        sidebar: "256px",
       },
     },
   },

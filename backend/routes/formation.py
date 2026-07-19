@@ -1,4 +1,8 @@
+import io
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -216,3 +220,106 @@ def reorder_lecons(
         ).update({"ordre": i + 1})
     db.commit()
     return {"ok": True}
+
+
+# ── PDF ──────────────────────────────────────────────────────────────────────
+
+@router.get("/cours/{cours_id}/pdf")
+def cours_pdf(
+    cours_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm, mm
+        from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+
+        from services import pdf_common as P
+    except ImportError:
+        raise HTTPException(status_code=500, detail="La bibliothèque PDF n'est pas installée")
+
+    cours = db.query(Cours).filter(Cours.id == cours_id).first()
+    if not cours:
+        raise HTTPException(status_code=404, detail="Cours introuvable")
+
+    lecons = sorted(cours.lecons, key=lambda l: l.ordre)
+    styles = P.make_styles()
+    buf = io.BytesIO()
+
+    def on_page(canvas, doc):
+        canvas.saveState()
+        w, h = A4
+        # Bandeau
+        canvas.setFillColor(colors.HexColor(P.INDIGO))
+        canvas.rect(0, h - 28 * mm, w, 28 * mm, fill=1, stroke=0)
+        canvas.setFillColor(colors.HexColor(P.AMBER))
+        canvas.rect(0, h - 30 * mm, w, 2 * mm, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 11)
+        canvas.drawString(2 * cm, h - 14 * mm, "Mises en Commun")
+        canvas.setFont("Helvetica", 8.5)
+        canvas.setFillColor(colors.HexColor("#C7C4F0"))
+        canvas.drawString(2 * cm, h - 20 * mm, "Formation  ·  Culte d'enfants")
+        # Pied
+        canvas.setFillColor(colors.HexColor(P.TINT))
+        canvas.rect(0, 0, w, 14 * mm, fill=1, stroke=0)
+        canvas.setFillColor(colors.HexColor(P.LINE))
+        canvas.rect(0, 14 * mm, w, 0.4 * mm, fill=1, stroke=0)
+        canvas.setFillColor(colors.HexColor(P.MUTED))
+        canvas.setFont("Helvetica", 7.5)
+        now = datetime.now(timezone.utc).strftime("%d/%m/%Y à %H:%M UTC")
+        canvas.drawString(2 * cm, 5.5 * mm, f"Généré le {now}")
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.setFillColor(colors.HexColor(P.INDIGO))
+        canvas.drawRightString(w - 2 * cm, 5.5 * mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=3.6 * cm, bottomMargin=2 * cm,
+        title=f"Formation — {cours.titre}",
+    )
+
+    story = [Paragraph(cours.titre, styles["h1"])]
+    meta = f"{len(lecons)} leçon{'s' if len(lecons) != 1 else ''}"
+    if cours.cree_par:
+        meta += f"  ·  par {cours.cree_par.prenom or cours.cree_par.nom}"
+    story.append(Paragraph(meta, styles["muted"]))
+    if cours.description:
+        story.append(Paragraph(P_escape(cours.description), styles["body"]))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor(P.AMBER),
+                            spaceBefore=6, spaceAfter=10))
+
+    if not lecons:
+        story.append(Paragraph("Ce cours ne contient pas encore de leçons.", styles["empty"]))
+
+    for i, lecon in enumerate(lecons, 1):
+        titre = f"{i}. {lecon.titre}"
+        if lecon.duree_minutes:
+            titre += f"   ({lecon.duree_minutes} min)"
+        story.append(Paragraph(P_escape(titre), styles["h2"]))
+        story.extend(P.html_to_flowables(lecon.contenu, styles))
+        if i < len(lecons):
+            story.append(HRFlowable(width="100%", thickness=0.4, color=colors.HexColor(P.LINE),
+                                    spaceBefore=10, spaceAfter=8))
+        else:
+            story.append(Spacer(1, 8))
+
+    doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
+    buf.seek(0)
+
+    safe_title = "".join(c if c.isalnum() else "_" for c in cours.titre)[:40] or "cours"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="formation_{safe_title}.pdf"'},
+    )
+
+
+def P_escape(text: str | None) -> str:
+    if not text:
+        return ""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br/>")

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getCatalogueChants } from '../api/client';
 import { Spinner } from '../components/ui/Spinner';
+import { Skeleton } from '../components/ui/Skeleton';
 import type { CatalogueChant } from '../types';
 
 export default function BibliothequeChants() {
@@ -35,7 +36,7 @@ export default function BibliothequeChants() {
     <div className="page-wrapper">
       {/* En-tête */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: 'Lora, serif', fontSize: 22, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
           Bibliothèque des chants
         </h1>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 4 }}>
@@ -61,64 +62,54 @@ export default function BibliothequeChants() {
 
       {/* Liste */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-          <Spinner size={32} />
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderBottom: i < 7 ? '1px solid var(--border-subtle)' : 'none' }}>
+              <Skeleton w={34} h={22} r={6} />
+              <Skeleton w={`${40 + (i % 4) * 12}%`} h={13} />
+            </div>
+          ))}
         </div>
       ) : chants.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+        <div className="empty-state">
+          <div className="empty-state-icon"><IcoSearch /></div>
           <p style={{ fontSize: 14, color: 'var(--fg-muted)' }}>
             Aucun chant pour « {debouncedQuery} »
           </p>
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--brand-navy)', color: '#FDFAF7' }}>
-                <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, fontSize: 11, width: 52 }}>N°</th>
-                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>Titre</th>
-                <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, fontSize: 11, width: 80 }}>Utilisations</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chants.map((c, i) => (
-                <tr
-                  key={c.id}
-                  style={{
-                    background: i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-page)',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}
-                >
-                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)',
-                      background: 'var(--brand-stone)', padding: '2px 6px',
-                      borderRadius: 4, fontFamily: 'monospace',
-                    }}>
-                      {c.numero}
-                    </span>
-                  </td>
-                  <td style={{ padding: '9px 12px', color: 'var(--fg-primary)', fontWeight: 500 }}>
-                    {c.titre}
-                  </td>
-                  <td style={{ padding: '9px 12px', textAlign: 'center' }}>
-                    {c.nb_utilisations > 0 ? (
-                      <span style={{
-                        fontSize: 11, fontWeight: 700,
-                        color: c.nb_utilisations >= 3 ? '#16A34A' : 'var(--fg-secondary)',
-                        background: c.nb_utilisations >= 3 ? '#DCFCE7' : 'var(--brand-stone)',
-                        padding: '2px 7px', borderRadius: 99,
-                      }}>
-                        ×{c.nb_utilisations}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {chants.map((c, i) => (
+            <div
+              key={c.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 14px',
+                borderBottom: i < chants.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+              }}
+            >
+              <span style={{
+                fontSize: 12, fontWeight: 700, color: 'var(--primary-hover)',
+                background: 'var(--primary-soft)', padding: '3px 8px',
+                borderRadius: 6, fontFamily: 'monospace', minWidth: 34, textAlign: 'center', flexShrink: 0,
+              }}>
+                {c.numero}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, color: 'var(--fg-primary)', fontWeight: 500, fontSize: 14.5 }}>
+                {c.titre}
+              </span>
+              {c.nb_utilisations > 0 && (
+                <span className="chip" style={{
+                  flexShrink: 0,
+                  color: c.nb_utilisations >= 3 ? 'var(--success-text)' : 'var(--text-muted)',
+                  background: c.nb_utilisations >= 3 ? 'var(--success-soft)' : 'var(--surface-sunken)',
+                  borderColor: 'transparent', fontWeight: 700,
+                }}>
+                  ×{c.nb_utilisations}
+                </span>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

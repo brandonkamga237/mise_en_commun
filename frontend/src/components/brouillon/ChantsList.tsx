@@ -28,7 +28,6 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
 
   const sorted = [...brouillon.chants].sort((a, b) => a.ordre - b.ordre);
 
-  // Fermer suggestions si clic en dehors
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
@@ -40,7 +39,6 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Recherche dans le catalogue avec debounce
   useEffect(() => {
     if (!adding) return;
     const t = setTimeout(async () => {
@@ -55,11 +53,7 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
     if (!newTitre.trim()) return;
     setSaving(true);
     try {
-      await addChant(brouillon.id, {
-        titre: newTitre.trim(),
-        etape: newEtape,
-        ordre: sorted.length + 1,
-      });
+      await addChant(brouillon.id, { titre: newTitre.trim(), etape: newEtape, ordre: sorted.length + 1 });
       setNewTitre('');
       setNewEtape('salutation');
       setAdding(false);
@@ -101,69 +95,57 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
 
   return (
     <div>
-      {sorted.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 12 }}>
+      {sorted.length === 0 && !adding && (
+        <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 12, fontStyle: 'italic' }}>
           Aucun chant renseigné.
         </p>
       )}
 
       {sorted.length > 0 && (
-        <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 6, overflow: 'hidden', marginBottom: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--brand-navy)', color: '#FDFAF7' }}>
-                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, fontSize: 11, width: 36 }}>#</th>
-                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11, width: 160 }}>Étape</th>
-                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>Titre du chant</th>
-                {canEdit && <th style={{ width: 80 }} />}
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((chant, i) => (
-                <ChantRow
-                  key={chant.id}
-                  chant={chant}
-                  idx={i}
-                  total={sorted.length}
-                  brouillonId={brouillon.id}
-                  canEdit={canEdit}
-                  onDelete={() => setChantASupprimer(chant)}
-                  onMoveUp={() => handleMove(chant.id, 'up')}
-                  onMoveDown={() => handleMove(chant.id, 'down')}
-                  onRefresh={onRefresh}
-                  bg={i % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-page)'}
-                  isMoving={moving === chant.id}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {sorted.map((chant, i) => (
+            <ChantRow
+              key={chant.id}
+              chant={chant}
+              idx={i}
+              total={sorted.length}
+              brouillonId={brouillon.id}
+              canEdit={canEdit}
+              onDelete={() => setChantASupprimer(chant)}
+              onMoveUp={() => handleMove(chant.id, 'up')}
+              onMoveDown={() => handleMove(chant.id, 'down')}
+              onRefresh={onRefresh}
+              isMoving={moving === chant.id}
+            />
+          ))}
         </div>
       )}
 
       {canEdit && !adding && (
-        <button className="btn btn-secondary btn-sm" onClick={() => setAdding(true)}>
+        <button className="btn btn-secondary btn-sm press" onClick={() => setAdding(true)}>
           + Ajouter un chant
         </button>
       )}
 
       {canEdit && adding && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{
+          border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+          padding: 12, background: 'var(--surface-2)', marginTop: 4,
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <select
               className="field"
-              style={{ width: 'auto', fontSize: 13, flexShrink: 0 }}
               value={newEtape}
               onChange={e => setNewEtape(e.target.value as Etape)}
             >
               {ETAPES.map(e => <option key={e} value={e}>{ETAPES_LABELS[e]}</option>)}
             </select>
 
-            {/* Input avec suggestions */}
-            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+            <div style={{ position: 'relative' }}>
               <input
                 ref={inputRef}
                 className="field"
-                style={{ width: '100%', fontSize: 13 }}
+                style={{ width: '100%' }}
                 placeholder="Rechercher par titre ou numéro…"
                 value={newTitre}
                 onChange={e => { setNewTitre(e.target.value); setShowSuggestions(true); }}
@@ -174,16 +156,14 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
                 }}
                 autoFocus
               />
-
-              {/* Dropdown suggestions */}
               {showSuggestions && suggestions.length > 0 && (
                 <div
                   ref={suggestionsRef}
                   style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
-                    background: 'var(--bg-card)', border: '1px solid var(--border-medium)',
-                    borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                    maxHeight: 220, overflowY: 'auto', marginTop: 4,
+                    background: 'var(--surface)', border: '1px solid var(--border-medium)',
+                    borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-lg)',
+                    maxHeight: 240, overflowY: 'auto', marginTop: 4,
                   }}
                 >
                   {suggestions.map(s => (
@@ -191,26 +171,22 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
                       key={s.id}
                       onMouseDown={e => { e.preventDefault(); selectSuggestion(s); }}
                       style={{
-                        padding: '8px 12px', cursor: 'pointer', display: 'flex',
+                        padding: '10px 12px', cursor: 'pointer', display: 'flex',
                         alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border-subtle)',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-page)')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                       <span style={{
                         fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)',
-                        background: 'var(--brand-stone)', padding: '1px 5px',
-                        borderRadius: 4, flexShrink: 0, minWidth: 28, textAlign: 'center',
+                        background: 'var(--surface-sunken)', padding: '2px 6px',
+                        borderRadius: 5, flexShrink: 0, minWidth: 28, textAlign: 'center',
                       }}>
                         {s.numero}
                       </span>
-                      <span style={{ fontSize: 13, color: 'var(--fg-primary)', flex: 1 }}>
-                        {s.titre}
-                      </span>
+                      <span style={{ fontSize: 13.5, color: 'var(--fg-primary)', flex: 1 }}>{s.titre}</span>
                       {s.nb_utilisations > 0 && (
-                        <span style={{ fontSize: 10, color: 'var(--fg-muted)', flexShrink: 0 }}>
-                          ×{s.nb_utilisations}
-                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--fg-muted)', flexShrink: 0 }}>×{s.nb_utilisations}</span>
                       )}
                     </div>
                   ))}
@@ -218,8 +194,8 @@ export function ChantsList({ brouillon, canEdit, onRefresh }: ChantsListProps) {
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <button className="btn btn-primary btn-sm" onClick={handleAdd} disabled={saving || !newTitre.trim()}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm press" onClick={handleAdd} disabled={saving || !newTitre.trim()} style={{ flex: 1 }}>
                 Ajouter
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => { setAdding(false); setShowSuggestions(false); }}>
@@ -255,11 +231,10 @@ interface ChantRowProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRefresh: () => void;
-  bg: string;
   isMoving: boolean;
 }
 
-function ChantRow({ chant, idx, total, brouillonId, canEdit, onDelete, onMoveUp, onMoveDown, onRefresh, bg, isMoving }: ChantRowProps) {
+function ChantRow({ chant, idx, total, brouillonId, canEdit, onDelete, onMoveUp, onMoveDown, onRefresh, isMoving }: ChantRowProps) {
   const [editing, setEditing] = useState(false);
   const [titre, setTitre] = useState(chant.titre);
   const [etape, setEtape] = useState<Etape>(chant.etape);
@@ -299,99 +274,108 @@ function ChantRow({ chant, idx, total, brouillonId, canEdit, onDelete, onMoveUp,
     } catch {}
   };
 
-  const btnStyle: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--fg-muted)', padding: '2px 4px',
-    opacity: isMoving ? 0.4 : 1,
-  };
-
   if (editing) {
     return (
-      <tr style={{ background: '#FFFBEB' }}>
-        <td style={{ padding: '6px 10px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 11, fontWeight: 700 }}>
-          {idx + 1}
-        </td>
-        <td style={{ padding: '6px 8px' }}>
-          <select className="field" style={{ fontSize: 12, padding: '4px 6px' }}
-            value={etape} onChange={e => setEtape(e.target.value as Etape)}>
+      <div style={{
+        border: '1px solid var(--warning-border)', borderRadius: 'var(--r-md)',
+        padding: 12, background: 'var(--warning-soft)',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <select className="field" value={etape} onChange={e => setEtape(e.target.value as Etape)}>
             {ETAPES.map(e => <option key={e} value={e}>{ETAPES_LABELS[e]}</option>)}
           </select>
-        </td>
-        <td style={{ padding: '6px 8px', position: 'relative' }}>
-          <input
-            ref={editInputRef}
-            className="field" style={{ fontSize: 12, padding: '4px 6px', width: '100%' }}
-            value={titre} onChange={e => { setTitre(e.target.value); setShowSug(true); }}
-            onFocus={() => setShowSug(true)}
-            onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setShowSug(false); } }}
-            autoFocus
-          />
-          {showSug && suggestions.length > 0 && (
-            <div ref={editSugRef} style={{
-              position: 'absolute', top: '100%', left: 8, right: 8, zIndex: 100,
-              background: 'var(--bg-card)', border: '1px solid var(--border-medium)',
-              borderRadius: 6, boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
-              maxHeight: 180, overflowY: 'auto', marginTop: 2,
-            }}>
-              {suggestions.map(s => (
-                <div key={s.id} onMouseDown={e => { e.preventDefault(); setTitre(s.titre); setShowSug(false); }}
-                  style={{ padding: '6px 10px', cursor: 'pointer', display: 'flex', gap: 8, fontSize: 12,
-                    borderBottom: '1px solid var(--border-subtle)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-page)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)', background: 'var(--brand-stone)', padding: '1px 4px', borderRadius: 3 }}>{s.numero}</span>
-                  <span>{s.titre}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </td>
-        <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>
-          <button className="btn btn-primary btn-sm" onClick={save} style={{ marginRight: 4 }}>OK</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(false); setShowSug(false); }}>✕</button>
-        </td>
-      </tr>
+          <div style={{ position: 'relative' }}>
+            <input
+              ref={editInputRef}
+              className="field" style={{ width: '100%' }}
+              value={titre} onChange={e => { setTitre(e.target.value); setShowSug(true); }}
+              onFocus={() => setShowSug(true)}
+              onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setShowSug(false); } }}
+              autoFocus
+            />
+            {showSug && suggestions.length > 0 && (
+              <div ref={editSugRef} style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                background: 'var(--surface)', border: '1px solid var(--border-medium)',
+                borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-lg)',
+                maxHeight: 200, overflowY: 'auto', marginTop: 4,
+              }}>
+                {suggestions.map(s => (
+                  <div key={s.id} onMouseDown={e => { e.preventDefault(); setTitre(s.titre); setShowSug(false); }}
+                    style={{ padding: '9px 11px', cursor: 'pointer', display: 'flex', gap: 8, fontSize: 13,
+                      borderBottom: '1px solid var(--border-subtle)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-hover)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)', background: 'var(--surface-sunken)', padding: '2px 5px', borderRadius: 4 }}>{s.numero}</span>
+                    <span>{s.titre}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary btn-sm press" onClick={save} style={{ flex: 1 }}>Enregistrer</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setEditing(false); setShowSug(false); }}>Annuler</button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <tr style={{ background: bg, opacity: isMoving ? 0.6 : 1, transition: 'opacity 150ms' }}>
-      <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 11, fontWeight: 700 }}>
-        {idx + 1}
-      </td>
-      <td style={{ padding: '8px 12px', color: 'var(--fg-secondary)', fontSize: 12 }}>
-        {ETAPES_LABELS[chant.etape] ?? chant.etape}
-      </td>
-      <td style={{ padding: '8px 12px', color: 'var(--fg-primary)' }}>{chant.titre}</td>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: 'var(--r-md)', padding: '10px 10px 10px 12px',
+      opacity: isMoving ? 0.55 : 1, transition: 'opacity 150ms ease',
+    }}>
+      <span style={{
+        width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--primary-soft)', color: 'var(--primary-hover)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 700,
+      }}>{idx + 1}</span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 500, color: 'var(--fg-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {chant.titre}
+        </div>
+        <span className="chip" style={{ marginTop: 4, fontSize: 11, padding: '2px 8px' }}>
+          {ETAPES_LABELS[chant.etape] ?? chant.etape}
+        </span>
+      </div>
+
       {canEdit && (
-        <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
-          <button onClick={onMoveUp} disabled={idx === 0 || isMoving} title="Monter" style={{ ...btnStyle, opacity: idx === 0 ? 0.2 : 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <button className="icon-btn" onClick={onMoveUp} disabled={idx === 0 || isMoving} title="Monter"
+            style={{ width: 34, height: 34, opacity: idx === 0 ? 0.25 : 1 }}>
             <IcoUp />
           </button>
-          <button onClick={onMoveDown} disabled={idx === total - 1 || isMoving} title="Descendre" style={{ ...btnStyle, opacity: idx === total - 1 ? 0.2 : 1 }}>
+          <button className="icon-btn" onClick={onMoveDown} disabled={idx === total - 1 || isMoving} title="Descendre"
+            style={{ width: 34, height: 34, opacity: idx === total - 1 ? 0.25 : 1 }}>
             <IcoDown />
           </button>
-          <button onClick={() => setEditing(true)} title="Modifier" style={btnStyle}>
+          <button className="icon-btn" onClick={() => setEditing(true)} title="Modifier" style={{ width: 34, height: 34 }}>
             <IcoEdit />
           </button>
-          <button onClick={onDelete} title="Supprimer" style={{ ...btnStyle, color: '#DC2626' }}>
+          <button className="icon-btn" onClick={onDelete} title="Supprimer" style={{ width: 34, height: 34, color: 'var(--danger)' }}>
             <IcoTrash />
           </button>
-        </td>
+        </div>
       )}
-    </tr>
+    </div>
   );
 }
 
 function IcoUp() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="2 8 6 4 10 8"/></svg>;
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 15 12 9 18 15"/></svg>;
 }
 function IcoDown() {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="2 4 6 8 10 4"/></svg>;
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
 }
 function IcoEdit() {
-  return <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M11 2l3 3-9 9H2v-3L11 2z"/></svg>;
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
 }
 function IcoTrash() {
-  return <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><polyline points="3 6 4 14 12 14 13 6"/><path d="M2 4h12"/><path d="M7 4V2h2v2"/></svg>;
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>;
 }

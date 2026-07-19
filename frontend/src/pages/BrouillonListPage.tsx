@@ -4,6 +4,7 @@ import { getPreparations, createPreparation } from '../api/client';
 import { useAuthStore } from '../store/auth';
 import { BrouillonCard } from '../components/brouillon/BrouillonCard';
 import { Spinner } from '../components/ui/Spinner';
+import { SkeletonList } from '../components/ui/Skeleton';
 import type { PreparationSummary } from '../types';
 import toast from 'react-hot-toast';
 
@@ -26,6 +27,13 @@ function fmtDate(dateStr: string): string {
 
 const STATUS_ORDER = ['officiel', 'en_revision'];
 
+type StatutFiltre = 'tous' | 'en_revision' | 'officiel';
+const FILTRES: { value: StatutFiltre; label: string }[] = [
+  { value: 'tous', label: 'Toutes' },
+  { value: 'en_revision', label: 'En révision' },
+  { value: 'officiel', label: 'Validées' },
+];
+
 interface BrouillonListPageProps {
   mineOnly?: boolean;
 }
@@ -40,6 +48,7 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
   const [selectedDate, setSelectedDate] = useState(nextSunday());
   const [fabOpen, setFabOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [filtre, setFiltre] = useState<StatutFiltre>('tous');
   const fabRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -81,8 +90,11 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
     }
   };
 
+  const matchFiltre = (b: PreparationSummary) =>
+    filtre === 'tous' ? true : b.statut === filtre;
+
   // Group by date_dimanche desc, sort each group by status priority
-  const grouped = preparations.reduce<Record<string, PreparationSummary[]>>((acc, b) => {
+  const grouped = preparations.filter(matchFiltre).reduce<Record<string, PreparationSummary[]>>((acc, b) => {
     (acc[b.date_dimanche] ??= []).push(b);
     return acc;
   }, {});
@@ -92,7 +104,6 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
   });
 
   const today = localDateStr();
-  // Un groupe est "périmé" si le dimanche est passé et tous les brouillons sont non soumis (cree) ou archivés
   const isStale = (date: string, items: PreparationSummary[]) =>
     date < today && items.length > 0 && items.every(b => b.statut === 'en_revision');
 
@@ -108,37 +119,80 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
         return !isStale(date, items);
       });
 
-  // ── États spéciaux ──────────────────────────────
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}>
-        <Spinner size={32} />
-      </div>
-    );
-  }
+  const segmented = (
+    <div className="segmented" style={{ marginBottom: 16 }}>
+      <button
+        className={`segmented-item${mineOnly ? ' active' : ''}`}
+        onClick={() => !mineOnly && navigate('/mes-preparations')}
+      >
+        Mes préparations
+      </button>
+      <button
+        className={`segmented-item${!mineOnly ? ' active' : ''}`}
+        onClick={() => mineOnly && navigate('/preparations')}
+      >
+        Équipe
+      </button>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div className="empty-state" style={{ paddingTop: 48 }}>
-        <div className="empty-state-icon"><IcoAlertCircle /></div>
-        <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg-primary)', marginBottom: 4 }}>
-          Impossible de charger les brouillons
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16 }}>
-          Vérifie ta connexion puis réessaie.
-        </div>
-        <button className="btn btn-primary btn-sm" onClick={load}>Réessayer</button>
-      </div>
-    );
-  }
+  return (
+    <div className="page-wrapper" style={{ paddingBottom: 80 }}>
+      {segmented}
 
-  if (preparations.length === 0) {
-    return (
-      <>
-        <div className="empty-state" style={{ paddingTop: 48 }}>
+      {/* Desktop: row de création */}
+      <div className="desktop-create-row" style={{ alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <input
+          type="date"
+          className="field"
+          style={{ width: 'auto', fontSize: 13, padding: '7px 10px' }}
+          value={selectedDate}
+          onChange={e => setSelectedDate(e.target.value)}
+        />
+        <button className="btn btn-primary btn-sm" onClick={() => handleCreate(selectedDate)} disabled={creating}>
+          {creating ? <Spinner size={14} /> : '+ Nouvelle préparation'}
+        </button>
+      </div>
+
+      {/* Filtres statut */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {FILTRES.map(f => (
+          <button
+            key={f.value}
+            className="chip press"
+            onClick={() => setFiltre(f.value)}
+            style={{
+              flexShrink: 0, cursor: 'pointer',
+              background: filtre === f.value ? 'var(--primary-soft)' : 'var(--surface)',
+              color: filtre === f.value ? 'var(--primary-hover)' : 'var(--text-muted)',
+              borderColor: filtre === f.value ? 'var(--primary-border)' : 'var(--border)',
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <SkeletonList count={4} />
+      ) : error ? (
+        <div className="empty-state" style={{ paddingTop: 32 }}>
+          <div className="empty-state-icon"><IcoAlertCircle /></div>
+          <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg-primary)', marginBottom: 4 }}>
+            Impossible de charger les préparations
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16 }}>
+            Vérifie ta connexion puis réessaie.
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={load}>Réessayer</button>
+        </div>
+      ) : visibleDates.length === 0 ? (
+        <div className="empty-state" style={{ paddingTop: 32 }}>
           <div className="empty-state-icon"><IcoFileEmpty /></div>
           <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg-primary)', marginBottom: 4 }}>
-            {mineOnly ? 'Aucune préparation pour l\'instant' : 'Aucune préparation cette semaine'}
+            {filtre !== 'tous'
+              ? 'Aucune préparation pour ce filtre'
+              : mineOnly ? 'Aucune préparation pour l\'instant' : 'Aucune préparation cette semaine'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16 }}>
             {mineOnly
@@ -149,68 +203,45 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
             {creating ? <Spinner size={14} /> : '+ Créer une préparation'}
           </button>
         </div>
-        <FabCreate
-          fabRef={fabRef} fabOpen={fabOpen} setFabOpen={setFabOpen}
-          selectedDate={selectedDate} setSelectedDate={setSelectedDate}
-          onCreate={handleCreate} creating={creating}
-        />
-      </>
-    );
-  }
+      ) : (
+        <>
+          {visibleDates.map(date => {
+            const items = mineOnly
+              ? grouped[date].filter(b => b.auteur.id === user?.id)
+              : grouped[date];
+            if (items.length === 0) return null;
+            return (
+              <div key={date} style={{ marginBottom: 20 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.07em', color: 'var(--fg-muted)',
+                  marginBottom: 8, paddingLeft: 2,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  {fmtDate(date)}
+                  {!mineOnly && (
+                    <span style={{ fontWeight: 400 }}>
+                      · {items.length} préparation{items.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                {items.map(b => <BrouillonCard key={b.id} brouillon={b} onRefresh={load} />)}
+              </div>
+            );
+          })}
 
-  return (
-    <div className="page-wrapper" style={{ paddingBottom: 80 }}>
-
-      {/* Desktop: row de création */}
-      <div className="desktop-create-row" style={{ alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <input
-          type="date"
-          className="field"
-          style={{ width: 'auto', fontSize: 13, padding: '6px 10px' }}
-          value={selectedDate}
-          onChange={e => setSelectedDate(e.target.value)}
-        />
-        <button className="btn btn-primary btn-sm" onClick={() => handleCreate(selectedDate)} disabled={creating}>
-          {creating ? <Spinner size={14} /> : '+ Nouvelle préparation'}
-        </button>
-      </div>
-
-      {visibleDates.map(date => {
-        const items = mineOnly
-          ? grouped[date].filter(b => b.auteur.id === user?.id)
-          : grouped[date];
-        if (items.length === 0) return null;
-        return (
-          <div key={date} style={{ marginBottom: 20 }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '0.07em', color: 'var(--fg-muted)',
-              marginBottom: 8, paddingLeft: 2,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              {fmtDate(date)}
-              {!mineOnly && (
-                <span style={{ fontWeight: 400 }}>
-                  · {items.length} préparation{items.length > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            {items.map(b => <BrouillonCard key={b.id} brouillon={b} onRefresh={load} />)}
-          </div>
-        );
-      })}
-
-      {/* Toggle brouillons périmés */}
-      {staleDatesCount > 0 && (
-        <button
-          className="btn btn-ghost btn-sm"
-          style={{ width: '100%', fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}
-          onClick={() => setShowAll(s => !s)}
-        >
-          {showAll
-            ? '↑ Masquer les anciens brouillons non soumis'
-            : `↓ Afficher ${staleDatesCount} semaine${staleDatesCount > 1 ? 's' : ''} sans préparation`}
-        </button>
+          {staleDatesCount > 0 && (
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ width: '100%', fontSize: 12, color: 'var(--fg-muted)', marginTop: 4 }}
+              onClick={() => setShowAll(s => !s)}
+            >
+              {showAll
+                ? '↑ Masquer les anciennes préparations non soumises'
+                : `↓ Afficher ${staleDatesCount} semaine${staleDatesCount > 1 ? 's' : ''} sans préparation`}
+            </button>
+          )}
+        </>
       )}
 
       {/* FAB — mobile only */}
@@ -223,7 +254,6 @@ export default function BrouillonListPage({ mineOnly = false }: BrouillonListPag
   );
 }
 
-// ── FAB component ────────────────────────────────
 interface FabProps {
   fabRef: React.RefObject<HTMLDivElement>;
   fabOpen: boolean;
@@ -240,19 +270,17 @@ function FabCreate({ fabRef, fabOpen, setFabOpen, selectedDate, setSelectedDate,
       {fabOpen && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 72px)',
-          right: 20,
-          background: 'var(--bg-card)',
-          borderRadius: 12,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-          padding: '12px 16px',
+          bottom: 'calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 78px)',
+          right: 18,
+          background: 'var(--surface)',
+          borderRadius: 'var(--r-lg)',
+          boxShadow: 'var(--shadow-lg)',
+          padding: '14px 16px',
           zIndex: 50,
-          minWidth: 220,
-          border: '1px solid var(--border-subtle)',
+          minWidth: 230,
+          border: '1px solid var(--border)',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-            Date du dimanche
-          </div>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>Date du dimanche</div>
           <input
             type="date"
             className="field"
@@ -273,14 +301,13 @@ function FabCreate({ fabRef, fabOpen, setFabOpen, selectedDate, setSelectedDate,
       <button
         className="fab"
         onClick={() => setFabOpen(o => !o)}
-        aria-label={fabOpen ? 'Fermer' : 'Créer un brouillon'}
-        style={{ background: fabOpen ? 'var(--brand-brown)' : undefined }}
+        aria-label={fabOpen ? 'Fermer' : 'Créer une préparation'}
       >
         <span style={{
           display: 'inline-block',
           transform: fabOpen ? 'rotate(45deg)' : 'none',
           transition: 'transform 0.2s',
-          fontSize: 22, lineHeight: 1,
+          fontSize: 24, lineHeight: 1,
         }}>+</span>
       </button>
     </div>
@@ -289,7 +316,7 @@ function FabCreate({ fabRef, fabOpen, setFabOpen, selectedDate, setSelectedDate,
 
 function IcoFileEmpty() {
   return (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
       <line x1="9" y1="13" x2="15" y2="13"/>
@@ -299,7 +326,7 @@ function IcoFileEmpty() {
 }
 function IcoAlertCircle() {
   return (
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/>
       <line x1="12" y1="8" x2="12" y2="12"/>
       <line x1="12" y1="16" x2="12.01" y2="16"/>

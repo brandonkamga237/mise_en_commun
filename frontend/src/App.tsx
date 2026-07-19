@@ -14,6 +14,7 @@ import ProfilPage from './pages/ProfilPage';
 import BibliothequeChants from './pages/BibliothequeChants';
 import FormationPage from './pages/FormationPage';
 import CoursDetailPage from './pages/CoursDetailPage';
+import MenuPage from './pages/MenuPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { token, user, loading } = useAuthStore();
@@ -70,6 +71,7 @@ export default function App() {
             <RequireAdmin><AdminPage /></RequireAdmin>
           } />
           <Route path="/profil" element={<ProfilPage />} />
+          <Route path="/menu" element={<MenuPage />} />
           <Route path="/bibliotheque" element={<BibliothequeChants />} />
           <Route path="/formation" element={<FormationPage />} />
           <Route path="/formation/:id" element={<CoursDetailPage />} />

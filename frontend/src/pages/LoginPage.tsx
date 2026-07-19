@@ -32,8 +32,10 @@ export default function LoginPage() {
 
   return (
     <div style={{
+      flex: 1,
+      width: '100%',
       minHeight: '100dvh',
-      background: 'var(--bg-page)',
+      background: 'radial-gradient(120% 90% at 50% -10%, var(--primary-soft) 0%, var(--bg-app) 55%)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -43,15 +45,16 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 400 }}>
 
         {/* En-tête */}
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
-            width: 48, height: 48,
-            background: 'var(--brand-navy)',
-            borderRadius: 12,
+            width: 58, height: 58,
+            background: 'linear-gradient(150deg, var(--primary), var(--primary-active))',
+            borderRadius: 17,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
+            margin: '0 auto 18px',
+            boxShadow: '0 10px 28px rgba(30,45,74,0.30)',
           }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round">
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
               <path d="M23 21v-2a4 4 0 00-3-3.87"/>
@@ -59,7 +62,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <div style={{
-            fontFamily: 'Lora, Georgia, serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 22,
             fontWeight: 700,
             color: 'var(--brand-navy)',
@@ -81,7 +84,7 @@ export default function LoginPage() {
         {/* Carte de connexion */}
         <div className="card" style={{ padding: '28px 24px' }}>
           <h2 style={{
-            fontFamily: 'Lora, Georgia, serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 18,
             fontWeight: 600,
             color: 'var(--fg-primary)',

@@ -4,7 +4,7 @@ interface AvatarProps {
   size?: number;
 }
 
-const COLORS = ['#1E2D4A', '#2B4C7E', '#C9952A', '#15803D', '#D97706', '#7C3AED', '#0369A1', '#B45309'];
+const COLORS = ['#1E2D4A', '#2B4C7E', '#C9952A', '#15803D', '#6B5B95', '#8C6D3F', '#3D6B7A', '#9C5B3B'];
 
 function getInitials(nom: string): string {
   const parts = nom.trim().split(/\s+/).filter(Boolean);

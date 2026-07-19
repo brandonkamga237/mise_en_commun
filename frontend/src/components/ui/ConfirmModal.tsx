@@ -55,7 +55,7 @@ export function ConfirmModal({
         <h3
           id="confirm-title"
           style={{
-            fontFamily: 'Lora, serif',
+            fontFamily: 'var(--font-display)',
             fontSize: 17,
             fontWeight: 600,
             color: 'var(--fg-primary)',

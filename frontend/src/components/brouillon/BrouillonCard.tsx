@@ -41,12 +41,10 @@ export function BrouillonCard({ brouillon, onRefresh }: BrouillonCardProps) {
 
   return (
     <div
-      className="card"
+      className="card card-interactive press"
       style={{
-        cursor: 'pointer',
         marginBottom: 10,
-        borderLeft: isOfficiel ? '3px solid #16A34A' : '3px solid transparent',
-        transition: 'box-shadow 0.15s',
+        borderLeft: isOfficiel ? '3px solid var(--success)' : '3px solid transparent',
       }}
       onClick={() => navigate(`/preparations/${brouillon.id}`)}
     >
